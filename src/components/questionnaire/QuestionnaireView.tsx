@@ -13,25 +13,19 @@ import {
   MOTIVATIONS,
   PRIORITIES,
   PROBLEM_TYPES,
-  SubjectOption
+  TaxonomyOption
 } from '../../types/taxonomy';
 import { QuestionnaireFormState, buildRecommendationPayload } from '../../services/payloadBuilder';
 import { submitQuestionnaire } from '../../services/api';
-import { RecommendationResponseEnvelope } from '../../types/contract';
+import { RecommendationResponseEnvelope, Language } from '../../types/contract';
 import {
   ChevronLeft,
   ChevronRight,
   CheckCircle,
   AlertCircle,
-  HelpCircle,
   ArrowUp,
   ArrowDown,
-  Sparkles,
-  Layers,
-  GraduationCap,
-  BookOpen,
-  Send,
-  RotateCcw
+  Sparkles
 } from 'lucide-react';
 
 interface QuestionnaireViewProps {
@@ -39,7 +33,8 @@ interface QuestionnaireViewProps {
   onSaveState: (state: QuestionnaireFormState) => void;
   onSubmitSuccess: (data: RecommendationResponseEnvelope, isLocalFallback: boolean) => void;
   onCancel: () => void;
-  lang: 'en' | 'ar';
+  onResetState?: () => void;
+  lang: Language;
 }
 
 export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
@@ -47,12 +42,28 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
   onSaveState,
   onSubmitSuccess,
   onCancel,
+  onResetState,
   lang
 }) => {
   const [formState, setFormState] = useState<QuestionnaireFormState>(initialState);
   const [currentStep, setCurrentStep] = useState(1);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Helper for option labels
+  const getOptName = (opt?: TaxonomyOption) => {
+    if (!opt) return '';
+    if (lang === 'ar') return opt.name_ar;
+    if (lang === 'fr' && opt.name_fr) return opt.name_fr;
+    return opt.name_en;
+  };
+
+  const getOptDesc = (opt?: TaxonomyOption) => {
+    if (!opt) return '';
+    if (lang === 'ar') return opt.description_ar || '';
+    if (lang === 'fr' && opt.description_fr) return opt.description_fr;
+    return opt.description_en || '';
+  };
 
   // Sync state upward when changed
   useEffect(() => {
@@ -103,12 +114,24 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
     if (step === 1) {
       if (formState.stageId === 'third_year_secondary') {
         if (formState.branchId === 'mathematical_technique' && !formState.branchSubtypeId) {
-          setValidationError(lang === 'ar' ? 'يرجى اختيار التخصص الهندسي لشعبة تقني رياضي.' : 'Please select your engineering specialty for Technical Math.');
+          setValidationError(
+            lang === 'ar'
+              ? 'يرجى اختيار التخصص الهندسي لشعبة تقني رياضي.'
+              : lang === 'fr'
+              ? 'Veuillez sélectionner votre spécialité de génie technique.'
+              : 'Please select your engineering specialty for Technical Math.'
+          );
           return false;
         }
         if (formState.hasTakenBaccalaureate) {
           if (formState.baccalaureateAverage === null || formState.baccalaureateAverage < 0 || formState.baccalaureateAverage > 20) {
-            setValidationError(lang === 'ar' ? 'يرجى إدخال معدل البكالوريا بين 0 و 20.' : 'Please enter a valid Baccalaureate average between 0 and 20.');
+            setValidationError(
+              lang === 'ar'
+                ? 'يرجى إدخال معدل البكالوريا بين 0 و 20.'
+                : lang === 'fr'
+                ? 'Veuillez saisir une moyenne du Baccalauréat valide entre 0 et 20.'
+                : 'Please enter a valid Baccalaureate average between 0 and 20.'
+            );
             return false;
           }
         }
@@ -121,11 +144,23 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
         const score = formState.subjectScores[subj.id];
         if (score) {
           if (score.min < 0 || score.min > 20 || score.max < 0 || score.max > 20) {
-            setValidationError(lang === 'ar' ? `الدرجات في مادة ${subj.name_ar} يجب أن تكون بين 0 و 20.` : `Scores for ${subj.name_en} must be between 0 and 20.`);
+            setValidationError(
+              lang === 'ar'
+                ? `الدرجات في مادة ${subj.name_ar} يجب أن تكون بين 0 و 20.`
+                : lang === 'fr'
+                ? `Les notes pour ${getOptName(subj)} doivent être comprises entre 0 et 20.`
+                : `Scores for ${subj.name_en} must be between 0 and 20.`
+            );
             return false;
           }
           if (score.min > score.max) {
-            setValidationError(lang === 'ar' ? `الحد الأدنى للدرجة في مادة ${subj.name_ar} لا يمكن أن يتجاوز الحد الأقصى.` : `Minimum score for ${subj.name_en} cannot exceed maximum score.`);
+            setValidationError(
+              lang === 'ar'
+                ? `الحد الأدنى للدرجة في مادة ${subj.name_ar} لا يمكن أن يتجاوز الحد الأقصى.`
+                : lang === 'fr'
+                ? `La note minimale pour ${getOptName(subj)} ne peut dépasser la note maximale.`
+                : `Minimum score for ${subj.name_en} cannot exceed maximum score.`
+            );
             return false;
           }
         }
@@ -135,15 +170,33 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
     if (step === 5 && !isFirstYear) {
       // Future direction: max 3 priorities
       if (formState.priorityIds.length > 3) {
-        setValidationError(lang === 'ar' ? 'يرجى اختيار 3 أولويات كحد أقصى.' : 'Please select a maximum of 3 priorities.');
+        setValidationError(
+          lang === 'ar'
+            ? 'يرجى اختيار 3 أولويات كحد أقصى.'
+            : lang === 'fr'
+            ? 'Veuillez sélectionner au maximum 3 priorités.'
+            : 'Please select a maximum of 3 priorities.'
+        );
         return false;
       }
       if (formState.goalClarity === 'clear_goal' && formState.targetFieldIds.length === 0) {
-        setValidationError(lang === 'ar' ? 'يرجى تحديد المجال المستهدف لهدفك الواضح.' : 'Please select at least one target field for your clear goal.');
+        setValidationError(
+          lang === 'ar'
+            ? 'يرجى تحديد المجال المستهدف لهدفك الواضح.'
+            : lang === 'fr'
+            ? 'Veuillez choisir au moins une filière cible pour votre projet.'
+            : 'Please select at least one target field for your clear goal.'
+        );
         return false;
       }
       if (formState.goalClarity === 'general_direction' && formState.consideredFieldIds.length === 0) {
-        setValidationError(lang === 'ar' ? 'يرجى اختيار مجال واحد على الأقل قيد الاهتمام.' : 'Please select at least one field under consideration.');
+        setValidationError(
+          lang === 'ar'
+            ? 'يرجى اختيار مجال واحد على الأقل قيد الاهتمام.'
+            : lang === 'fr'
+            ? 'Veuillez sélectionner au moins un domaine en réflexion.'
+            : 'Please select at least one field under consideration.'
+        );
         return false;
       }
     }
@@ -190,22 +243,28 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
   // Step names
   const stepTitles = isFirstYear
     ? [
-        { num: 1, en: 'Academic Stage & Stream', ar: 'المرحلة والجذع المشترك' },
-        { num: 2, en: 'Subject Performance', ar: 'المستوى والدرجات' },
-        { num: 3, en: 'Preferences & Difficulties', ar: 'المواد المفضلة والصعوبات' },
-        { num: 4, en: 'Interests & Activities', ar: 'الميول والأنشطة' },
-        { num: 5, en: 'Future Vision', ar: 'التطلعات المستقبلية' },
-        { num: 6, en: 'Review & Submit', ar: 'مراجعة وتأكيد' }
+        { num: 1, en: 'Academic Stage & Stream', ar: 'المرحلة والجذع المشترك', fr: 'Niveau & Tronc Commun' },
+        { num: 2, en: 'Subject Performance', ar: 'المستوى والدرجات', fr: 'Notes & Performances' },
+        { num: 3, en: 'Preferences & Difficulties', ar: 'المواد المفضلة والصعوبات', fr: 'Matières & Difficultés' },
+        { num: 4, en: 'Interests & Activities', ar: 'الميول والأنشطة', fr: 'Centres d\'Intérêt & Activités' },
+        { num: 5, en: 'Future Vision', ar: 'التطلعات المستقبلية', fr: 'Aspirations Futures' },
+        { num: 6, en: 'Review & Submit', ar: 'مراجعة وتأكيد', fr: 'Révision & Soumission' }
       ]
     : [
-        { num: 1, en: 'Stage & Branch', ar: 'المرحلة والشعبة' },
-        { num: 2, en: 'Subject Scores', ar: 'درجات المواد' },
-        { num: 3, en: 'Subject Order & Difficulties', ar: 'ترتيب المواد والصعوبات' },
-        { num: 4, en: 'Interests & Environment', ar: 'الاهتمامات وبيئة العمل' },
-        { num: 5, en: 'Future Direction', ar: 'الهدف المستقبلي' },
-        { num: 6, en: 'Problem Preferences', ar: 'طبيعة التحديات والمشكلات' },
-        { num: 7, en: 'Review & Confirm', ar: 'مراجعة وتأكيد' }
+        { num: 1, en: 'Stage & Branch', ar: 'المرحلة والشعبة', fr: 'Niveau & Filière du Bac' },
+        { num: 2, en: 'Subject Scores', ar: 'درجات المواد', fr: 'Notes par Matière' },
+        { num: 3, en: 'Subject Order & Difficulties', ar: 'ترتيب المواد والصعوبات', fr: 'Classement & Difficultés' },
+        { num: 4, en: 'Interests & Environment', ar: 'الاهتمامات وبيئة العمل', fr: 'Intérêts & Environnement' },
+        { num: 5, en: 'Future Direction', ar: 'الهدف المستقبلي', fr: 'Objectifs & Priorités' },
+        { num: 6, en: 'Problem Preferences', ar: 'طبيعة التحديات والمشكلات', fr: 'Résolution de Problèmes' },
+        { num: 7, en: 'Review & Confirm', ar: 'مراجعة وتأكيد', fr: 'Révision & Soumission' }
       ];
+
+  const getStepTitle = (st: typeof stepTitles[0]) => {
+    if (lang === 'ar') return st.ar;
+    if (lang === 'fr') return st.fr;
+    return st.en;
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-16">
@@ -214,26 +273,59 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-bold text-[#1F7A6E] uppercase tracking-wider">
-              <span>{isFirstYear ? 'Route A · First Year Secondary' : `Routes B/C/D · Baccalaureate`}</span>
+              <span>
+                {isFirstYear
+                  ? (lang === 'fr' ? 'Route A · 1ère Année Secondaire' : 'Route A · First Year Secondary')
+                  : (lang === 'fr' ? 'Routes B/C/D · Baccalauréat' : 'Routes B/C/D · Baccalaureate')}
+              </span>
               <span>·</span>
-              <span>{lang === 'ar' ? `الخطوة ${currentStep} من ${totalSteps}` : `Step ${currentStep} of ${totalSteps}`}</span>
+              <span>
+                {lang === 'ar'
+                  ? `الخطوة ${currentStep} من ${totalSteps}`
+                  : lang === 'fr'
+                  ? `Étape ${currentStep} sur ${totalSteps}`
+                  : `Step ${currentStep} of ${totalSteps}`}
+              </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-[#0F3D37] mt-0.5">
-              {lang === 'ar' ? stepTitles[currentStep - 1]?.ar : stepTitles[currentStep - 1]?.en}
+              {getStepTitle(stepTitles[currentStep - 1])}
             </h1>
           </div>
 
           <div className="flex items-center gap-2">
+            {onResetState && (
+              <button
+                type="button"
+                onClick={() => {
+                  const confirmed = window.confirm(
+                    lang === 'fr'
+                      ? 'Voulez-vous réinitialiser toutes vos réponses et recommencer le questionnaire à zéro ?'
+                      : lang === 'ar'
+                      ? 'هل تريد مسح جميع الإجابات والبدء من جديد؟'
+                      : 'Reset all answers and start fresh?'
+                  );
+                  if (confirmed) {
+                    onResetState();
+                    setCurrentStep(1);
+                  }
+                }}
+                className="text-xs font-semibold text-rose-600 hover:text-rose-800 px-3 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 transition-colors cursor-pointer"
+                title={lang === 'fr' ? 'Effacer toutes les réponses' : 'Reset all answers'}
+              >
+                {lang === 'ar' ? 'إعادة تعيين' : lang === 'fr' ? 'Recommencer à zéro' : 'Reset'}
+              </button>
+            )}
+
             <button
               onClick={onCancel}
               className="text-xs font-semibold text-[#4B5563] hover:text-[#0F3D37] px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors"
             >
-              {lang === 'ar' ? 'إلغاء والعودة' : 'Exit to Dashboard'}
+              {lang === 'ar' ? 'إلغاء والعودة' : lang === 'fr' ? 'Quitter vers l\'accueil' : 'Exit to Dashboard'}
             </button>
           </div>
         </div>
 
-        {/* Progress Step Circles / Segmented bar */}
+        {/* Progress Step Circles */}
         <div className="grid grid-cols-6 sm:grid-cols-7 gap-1.5">
           {stepTitles.map((st) => {
             const isCompleted = st.num < currentStep;
@@ -266,7 +358,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                   {isCompleted ? '✓' : st.num}
                 </div>
                 <span className="hidden md:block text-[11px] font-medium text-[#4B5563] truncate mt-1 w-full">
-                  {lang === 'ar' ? st.ar : st.en}
+                  {getStepTitle(st)}
                 </span>
               </button>
             );
@@ -290,7 +382,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
             {/* Stage Selector */}
             <div className="space-y-3">
               <label className="block text-sm font-bold text-[#0F3D37]">
-                {lang === 'ar' ? '1. ما هو مستواك الدراسي الحالي؟' : '1. What is your current academic stage?'}
+                {lang === 'ar' ? '1. ما هو مستواك الدراسي الحالي؟' : lang === 'fr' ? '1. Quel est votre cycle scolaire actuel ?' : '1. What is your current academic stage?'}
                 <span className="text-red-500 ml-1">*</span>
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -309,10 +401,10 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                       <div className="flex items-start justify-between">
                         <div>
                           <h4 className="font-bold text-[#0F3D37] text-base">
-                            {lang === 'ar' ? stage.name_ar : stage.name_en}
+                            {getOptName(stage)}
                           </h4>
                           <p className="text-xs text-[#4B5563] mt-1 leading-relaxed">
-                            {lang === 'ar' ? stage.description_ar : stage.description_en}
+                            {getOptDesc(stage)}
                           </p>
                         </div>
                         <input
@@ -333,7 +425,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
             {formState.stageId === 'first_year_secondary' && (
               <div className="space-y-3 pt-4 border-t border-slate-100">
                 <label className="block text-sm font-bold text-[#0F3D37]">
-                  {lang === 'ar' ? '2. ما هو الجذع المشترك الذي تدرسه حالياً؟' : '2. What is your current common core study group?'}
+                  {lang === 'ar' ? '2. ما هو الجذع المشترك الذي تدرسه حالياً؟' : lang === 'fr' ? '2. Quel est votre tronc commun actuel ?' : '2. What is your current common core study group?'}
                   <span className="text-red-500 ml-1">*</span>
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -352,10 +444,10 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                         <div className="flex items-start justify-between">
                           <div>
                             <h4 className="font-bold text-[#0F3D37]">
-                              {lang === 'ar' ? sg.name_ar : sg.name_en}
+                              {getOptName(sg)}
                             </h4>
                             <p className="text-xs text-[#4B5563] mt-1">
-                              {lang === 'ar' ? sg.description_ar : sg.description_en}
+                              {getOptDesc(sg)}
                             </p>
                           </div>
                           <input
@@ -378,7 +470,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
               <div className="space-y-6 pt-4 border-t border-slate-100">
                 <div className="space-y-3">
                   <label className="block text-sm font-bold text-[#0F3D37]">
-                    {lang === 'ar' ? '2. ما هي شعبتك في البكالوريا؟' : '2. What is your Baccalaureate academic branch?'}
+                    {lang === 'ar' ? '2. ما هي شعبتك في البكالوريا؟' : lang === 'fr' ? '2. Quelle est votre filière au Baccalauréat ?' : '2. What is your Baccalaureate academic branch?'}
                     <span className="text-red-500 ml-1">*</span>
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -396,7 +488,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                         >
                           <div className="flex items-start justify-between">
                             <h4 className="font-bold text-sm text-[#0F3D37]">
-                              {lang === 'ar' ? b.name_ar : b.name_en}
+                              {getOptName(b)}
                             </h4>
                             <input
                               type="radio"
@@ -416,7 +508,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                 {formState.branchId === 'mathematical_technique' && (
                   <div className="p-4 bg-[#F7F6F2] rounded-xl border border-[#A7D0B8] space-y-3 animate-in fade-in">
                     <label className="block text-sm font-bold text-[#0F3D37]">
-                      {lang === 'ar' ? 'حدد تخصصك الهندسي (تقني رياضي):' : 'Select your engineering specialty:'}
+                      {lang === 'ar' ? 'حدد تخصصك الهندسي (تقني رياضي):' : lang === 'fr' ? 'Précisez votre spécialité d\'ingénierie :' : 'Select your engineering specialty:'}
                       <span className="text-red-500 ml-1">*</span>
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -432,7 +524,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-bold text-[#0F3D37]">
-                                {lang === 'ar' ? sub.name_ar : sub.name_en}
+                                {getOptName(sub)}
                               </span>
                               <input
                                 type="radio"
@@ -454,10 +546,18 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-sm font-bold text-[#0F3D37]">
-                        {lang === 'ar' ? 'هل اجتزت امتحان شهادة البكالوريا وحصلت على المعدل؟' : 'Have you already taken the Baccalaureate exam?'}
+                        {lang === 'ar'
+                          ? 'هل اجتزت امتحان شهادة البكالوريا وحصلت على المعدل؟'
+                          : lang === 'fr'
+                          ? 'Avez-vous déjà obtenu votre moyenne au Baccalauréat ?'
+                          : 'Have you already taken the Baccalaureate exam?'}
                       </span>
                       <p className="text-xs text-[#4B5563]">
-                        {lang === 'ar' ? 'إذا كان نعم، يمكنك إدخال المعدل لتحسين دقة التوصيات.' : 'If yes, provide your Bac average (0-20) to calibrate eligibility.'}
+                        {lang === 'ar'
+                          ? 'إذا كان نعم، يمكنك إدخال المعدل لتحسين دقة التوصيات.'
+                          : lang === 'fr'
+                          ? 'Si oui, indiquez votre moyenne pour calibrer l\'éligibilité aux écoles.'
+                          : 'If yes, provide your Bac average (0-20) to calibrate eligibility.'}
                       </p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -478,7 +578,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                   {formState.hasTakenBaccalaureate && (
                     <div className="pt-2 animate-in fade-in">
                       <label htmlFor="bac-avg" className="block text-xs font-bold text-[#0F3D37] mb-1">
-                        {lang === 'ar' ? 'معدل شهادة البكالوريا (من 20):' : 'Baccalaureate Average (out of 20):'}
+                        {lang === 'ar' ? 'معدل شهادة البكالوريا (من 20):' : lang === 'fr' ? 'Moyenne du Baccalauréat (sur 20) :' : 'Baccalaureate Average (out of 20):'}
                       </label>
                       <input
                         id="bac-avg"
@@ -491,7 +591,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                           const val = e.target.value === '' ? null : parseFloat(e.target.value);
                           setFormState(prev => ({ ...prev, baccalaureateAverage: val }));
                         }}
-                        placeholder="e.g. 15.42"
+                        placeholder="ex. 15.42"
                         className="w-48 px-3 py-2 border border-slate-300 rounded-lg text-sm text-[#0F3D37] focus:ring-2 focus:ring-[#1F7A6E]"
                       />
                     </div>
@@ -507,11 +607,17 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
               <h3 className="text-base font-bold text-[#0F3D37]">
-                {lang === 'ar' ? 'مستواك في المواد الدراسية (معدل العلامات من 20)' : 'Subject Score Ranges (0 to 20)'}
+                {lang === 'ar'
+                  ? 'مستواك في المواد الدراسية (معدل العلامات من 20)'
+                  : lang === 'fr'
+                  ? 'Vos notes estimées par matière (sur 20)'
+                  : 'Subject Score Ranges (0 to 20)'}
               </h3>
               <p className="text-xs text-[#4B5563] mt-1">
                 {lang === 'ar'
                   ? 'حدد المدى التقديري لعلاماتك (الحد الأدنى والأقصى) في كل مادة خلال الفصول الدراسية.'
+                  : lang === 'fr'
+                  ? 'Indiquez la fourchette représentative (note minimale et maximale) pour chaque discipline clé.'
                   : 'Specify your estimated typical score range (min and max) out of 20 for each core subject.'}
               </p>
             </div>
@@ -526,7 +632,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                   >
                     <div className="flex items-center justify-between">
                       <h4 className="font-bold text-sm text-[#0F3D37]">
-                        {lang === 'ar' ? subj.name_ar : subj.name_en}
+                        {getOptName(subj)}
                       </h4>
                       <span className="text-xs font-mono font-bold text-[#1F7A6E] bg-[#1F7A6E]/10 px-2 py-0.5 rounded">
                         {currentScore.min} – {currentScore.max} / 20
@@ -536,7 +642,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div>
                         <label className="text-slate-500 block mb-1">
-                          {lang === 'ar' ? 'الحد الأدنى:' : 'Min score:'}
+                          {lang === 'ar' ? 'الحد الأدنى:' : lang === 'fr' ? 'Note min :' : 'Min score:'}
                         </label>
                         <input
                           type="number"
@@ -563,7 +669,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
 
                       <div>
                         <label className="text-slate-500 block mb-1">
-                          {lang === 'ar' ? 'الحد الأقصى:' : 'Max score:'}
+                          {lang === 'ar' ? 'الحد الأقصى:' : lang === 'fr' ? 'Note max :' : 'Max score:'}
                         </label>
                         <input
                           type="number"
@@ -602,11 +708,17 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
             <div className="space-y-3">
               <div>
                 <h3 className="text-base font-bold text-[#0F3D37]">
-                  {lang === 'ar' ? '1. ترتيب المواد حسب تفضيلك واستمتاعك بدراستها' : '1. Rank Subjects by Your Enjoyment & Preference'}
+                  {lang === 'ar'
+                    ? '1. ترتيب المواد حسب تفضيلك واستمتاعك بدراستها'
+                    : lang === 'fr'
+                    ? '1. Classez les matières par ordre de préférence'
+                    : '1. Rank Subjects by Your Enjoyment & Preference'}
                 </h3>
                 <p className="text-xs text-[#4B5563] mt-0.5">
                   {lang === 'ar'
                     ? 'استخدم الأسهم لتحريك المواد المفضلة إلى الأعلى. (المادة في الأعلى هي الأكثر تفضيلاً لديك).'
+                    : lang === 'fr'
+                    ? 'Utilisez les flèches pour placer vos matières favorites en haut de liste.'
                     : 'Use the up/down arrows to rank your subjects. Top is your most favorite.'}
                 </p>
               </div>
@@ -625,7 +737,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                           {idx + 1}
                         </span>
                         <span className="font-semibold text-sm text-[#0F3D37]">
-                          {lang === 'ar' ? subj.name_ar : subj.name_en}
+                          {getOptName(subj)}
                         </span>
                       </div>
 
@@ -643,7 +755,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                             }
                           }}
                           className="p-1 rounded hover:bg-white text-slate-600 disabled:opacity-20"
-                          title="Move up"
+                          title="Monter"
                         >
                           <ArrowUp className="w-4 h-4" />
                         </button>
@@ -660,7 +772,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                             }
                           }}
                           className="p-1 rounded hover:bg-white text-slate-600 disabled:opacity-20"
-                          title="Move down"
+                          title="Descendre"
                         >
                           <ArrowDown className="w-4 h-4" />
                         </button>
@@ -671,15 +783,21 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
               </div>
             </div>
 
-            {/* Difficult Subjects (kept separate) */}
+            {/* Difficult Subjects */}
             <div className="space-y-3 pt-6 border-t border-slate-100">
               <div>
                 <h3 className="text-base font-bold text-[#0F3D37]">
-                  {lang === 'ar' ? '2. المواد التي تواجه فيها صعوبة أكاديمية حالياً' : '2. Subjects You Find Difficult or Challenging'}
+                  {lang === 'ar'
+                    ? '2. المواد التي تواجه فيها صعوبة أكاديمية حالياً'
+                    : lang === 'fr'
+                    ? '2. Matières où vous rencontrez des difficultés'
+                    : '2. Subjects You Find Difficult or Challenging'}
                 </h3>
                 <p className="text-xs text-[#4B5563] mt-0.5">
                   {lang === 'ar'
                     ? 'اختر المواد التي تشعر أنها تتطلب جهداً كبيراً أو تجد صعوبة في فهم مفاهيمها.'
+                    : lang === 'fr'
+                    ? 'Sélectionnez les matières qui exigent un effort soutenu ou des blocages récurrents.'
                     : 'Select subjects where you frequently encounter comprehension hurdles.'}
                 </p>
               </div>
@@ -706,7 +824,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span>{lang === 'ar' ? subj.name_ar : subj.name_en}</span>
+                        <span>{getOptName(subj)}</span>
                         {isDifficult && <span className="text-amber-600 font-bold">✓</span>}
                       </div>
                     </button>
@@ -724,10 +842,18 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
             <div className="space-y-4">
               <div>
                 <h3 className="text-base font-bold text-[#0F3D37]">
-                  {lang === 'ar' ? '1. ما مدى اهتمامك بالمجالات المعرفية التالية؟' : '1. Rate Your Interest in Core Disciplines'}
+                  {lang === 'ar'
+                    ? '1. ما مدى اهتمامك بالمجالات المعرفية التالية؟'
+                    : lang === 'fr'
+                    ? '1. Évaluez votre intérêt pour les grands domaines'
+                    : '1. Rate Your Interest in Core Disciplines'}
                 </h3>
                 <p className="text-xs text-[#4B5563] mt-0.5">
-                  {lang === 'ar' ? 'مقياس من 1 (غير مهتم إطلاقاً) إلى 5 (شديد الاهتمام والشغف)' : 'Scale: 1 = Not interested at all, 5 = Highly passionate'}
+                  {lang === 'ar'
+                    ? 'مقياس من 1 (غير مهتم إطلاقاً) إلى 5 (شديد الاهتمام والشغف)'
+                    : lang === 'fr'
+                    ? 'Échelle : 1 = Pas du tout intéressé(e), 5 = Passionné(e)'
+                    : 'Scale: 1 = Not interested at all, 5 = Highly passionate'}
                 </p>
               </div>
 
@@ -741,10 +867,10 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                     >
                       <div className="sm:max-w-md">
                         <h4 className="font-bold text-sm text-[#0F3D37]">
-                          {lang === 'ar' ? field.name_ar : field.name_en}
+                          {getOptName(field)}
                         </h4>
                         <p className="text-xs text-[#4B5563]">
-                          {lang === 'ar' ? field.description_ar : field.description_en}
+                          {getOptDesc(field)}
                         </p>
                       </div>
 
@@ -783,7 +909,11 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
             <div className="space-y-3 pt-6 border-t border-slate-100">
               <div>
                 <h3 className="text-base font-bold text-[#0F3D37]">
-                  {lang === 'ar' ? '2. مواضيع تثير حماسك واستكشافك' : '2. Specific Topics That Excite You'}
+                  {lang === 'ar'
+                    ? '2. مواضيع تثير حماسك واستكشافك'
+                    : lang === 'fr'
+                    ? '2. Thématiques qui vous stimulent'
+                    : '2. Specific Topics That Excite You'}
                 </h3>
               </div>
 
@@ -809,7 +939,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span>{lang === 'ar' ? topic.name_ar : topic.name_en}</span>
+                        <span>{getOptName(topic)}</span>
                         {isSelected && <span className="text-[#1F7A6E] font-bold">✓</span>}
                       </div>
                     </button>
@@ -817,16 +947,20 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                 })}
               </div>
 
-              {/* Optional Other Free text preserving question & answer */}
+              {/* Optional Other Free text */}
               <div className="pt-2">
                 <label className="block text-xs font-medium text-[#4B5563] mb-1">
-                  {lang === 'ar' ? 'مواضيع أخرى تود إضافتها (اختياري):' : 'Other topics of interest (optional free-text):'}
+                  {lang === 'ar'
+                    ? 'مواضيع أخرى تود إضافتها (اختياري):'
+                    : lang === 'fr'
+                    ? 'Autres thématiques d\'intérêt (facultatif) :'
+                    : 'Other topics of interest (optional free-text):'}
                 </label>
                 <input
                   type="text"
                   value={formState.topicOtherText}
                   onChange={(e) => setFormState(prev => ({ ...prev, topicOtherText: e.target.value }))}
-                  placeholder={lang === 'ar' ? 'اكتب مواضيع أخرى...' : 'e.g. Astrophysics, Digital animation...'}
+                  placeholder={lang === 'ar' ? 'اكتب مواضيع أخرى...' : lang === 'fr' ? 'ex. Astrophysique, animation 3D...' : 'e.g. Astrophysics, Digital animation...'}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg text-[#0F3D37]"
                 />
               </div>
@@ -836,7 +970,11 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
             <div className="space-y-3 pt-6 border-t border-slate-100">
               <div>
                 <h3 className="text-base font-bold text-[#0F3D37]">
-                  {lang === 'ar' ? '3. الأنشطة التي تستمتع بالقيام بها' : '3. Activities You Genuinely Enjoy'}
+                  {lang === 'ar'
+                    ? '3. الأنشطة التي تستمتع بالقيام بها'
+                    : lang === 'fr'
+                    ? '3. Activités dans lesquelles vous vous épanouissez'
+                    : '3. Activities You Genuinely Enjoy'}
                 </h3>
               </div>
 
@@ -862,7 +1000,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span>{lang === 'ar' ? act.name_ar : act.name_en}</span>
+                        <span>{getOptName(act)}</span>
                         {isSelected && <span className="text-[#1F7A6E] font-bold">✓</span>}
                       </div>
                     </button>
@@ -876,7 +1014,11 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
               <div className="space-y-3 pt-6 border-t border-slate-100">
                 <div>
                   <h3 className="text-base font-bold text-[#0F3D37]">
-                    {lang === 'ar' ? '4. بيئات العمل المستقبلية المفضلة' : '4. Preferred Future Work Environments'}
+                    {lang === 'ar'
+                      ? '4. بيئات العمل المستقبلية المفضلة'
+                      : lang === 'fr'
+                      ? '4. Environnements de travail envisagés'
+                      : '4. Preferred Future Work Environments'}
                   </h3>
                 </div>
 
@@ -902,7 +1044,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span>{lang === 'ar' ? env.name_ar : env.name_en}</span>
+                          <span>{getOptName(env)}</span>
                           {isSelected && <span className="text-[#1F7A6E] font-bold">✓</span>}
                         </div>
                       </button>
@@ -918,28 +1060,38 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
         {currentStep === 5 && (
           <div className="space-y-8 animate-in fade-in duration-200">
             {isFirstYear ? (
-              /* Route A: Future Vision (Simplified) */
+              /* Route A: Future Vision */
               <div className="space-y-4">
                 <div>
                   <h3 className="text-base font-bold text-[#0F3D37]">
-                    {lang === 'ar' ? 'تطلعاتك المهنية المستقبلية (اختياري)' : 'Future Career Aspirations (Optional)'}
+                    {lang === 'ar'
+                      ? 'تطلعاتك المهنية المستقبلية (اختياري)'
+                      : lang === 'fr'
+                      ? 'Aspirations professionnelles (facultatif)'
+                      : 'Future Career Aspirations (Optional)'}
                   </h3>
                   <p className="text-xs text-[#4B5563] mt-0.5">
                     {lang === 'ar'
                       ? 'كطالب في السنة الأولى ثانوي، لست ملزماً بتحديد مهنة نهائية، ولكن يمكنك مشاركة أي مهنة تحلم بها إن وجدت.'
+                      : lang === 'fr'
+                      ? 'En 1ère année secondaire, aucun choix définitif n\'est requis. Indiquez simplement vos idées si vous en avez.'
                       : 'As a 1st year student, you are not pressured to declare a fixed career. Share any dreams if you have them.'}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#0F3D37] mb-1">
-                    {lang === 'ar' ? 'مهنة أو قطاع يلفت انتباهك:' : 'An occupation or industry that catches your attention:'}
+                    {lang === 'ar'
+                      ? 'مهنة أو قطاع يلفت انتباهك:'
+                      : lang === 'fr'
+                      ? 'Un métier ou un secteur qui attire votre curiosité :'
+                      : 'An occupation or industry that catches your attention:'}
                   </label>
                   <input
                     type="text"
                     value={formState.targetRoleText}
                     onChange={(e) => setFormState(prev => ({ ...prev, targetRoleText: e.target.value }))}
-                    placeholder={lang === 'ar' ? 'مثال: مهندس برمجيات، طبيب، أستاذ، مصمم...' : 'e.g. Software architect, surgeon, researcher, teacher...'}
+                    placeholder={lang === 'ar' ? 'مثال: مهندس برمجيات، طبيب، أستاذ، مصمم...' : lang === 'fr' ? 'ex. Ingénieur logiciel, médecin, enseignant, architecte...' : 'e.g. Software architect, surgeon, researcher, teacher...'}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-[#0F3D37]"
                   />
                 </div>
@@ -949,7 +1101,11 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
               <div className="space-y-6">
                 <div>
                   <h3 className="text-base font-bold text-[#0F3D37]">
-                    {lang === 'ar' ? '1. ما مدى وضوح هدفك الجامعي والمهني؟' : '1. How defined is your career or university goal?'}
+                    {lang === 'ar'
+                      ? '1. ما مدى وضوح هدفك الجامعي والمهني؟'
+                      : lang === 'fr'
+                      ? '1. Quel est votre niveau de précision concernant votre projet ?'
+                      : '1. How defined is your career or university goal?'}
                     <span className="text-red-500 ml-1">*</span>
                   </h3>
                 </div>
@@ -970,10 +1126,10 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                       >
                         <div>
                           <h4 className="font-bold text-sm text-[#0F3D37]">
-                            {lang === 'ar' ? opt.name_ar : opt.name_en}
+                            {getOptName(opt)}
                           </h4>
                           <p className="text-xs text-[#4B5563] mt-1">
-                            {lang === 'ar' ? opt.description_ar : opt.description_en}
+                            {getOptDesc(opt)}
                           </p>
                         </div>
                         <input
@@ -992,13 +1148,13 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                 {formState.goalClarity === 'clear_goal' && (
                   <div className="space-y-6 p-5 bg-[#F7F6F2] rounded-xl border border-[#A7D0B8] animate-in fade-in">
                     <span className="text-xs font-bold text-[#1F7A6E] uppercase tracking-wider block">
-                      Route B · Clear Goal Configuration
+                      Route B · {lang === 'fr' ? 'Configuration de projet défini' : 'Clear Goal Configuration'}
                     </span>
 
                     {/* Target Fields */}
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-[#0F3D37]">
-                        {lang === 'ar' ? 'المجال أو التخصص المستهدف تحديداً:' : 'Specific Target Field(s):'}
+                        {lang === 'ar' ? 'المجال أو التخصص المستهدف تحديداً:' : lang === 'fr' ? 'Filière(s) ou domaine(s) cible(s) :' : 'Specific Target Field(s):'}
                         <span className="text-red-500 ml-1">*</span>
                       </label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -1020,7 +1176,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                                 isSel ? 'bg-[#1F7A6E] text-white border-[#1F7A6E]' : 'bg-white border-slate-200 text-[#4B5563]'
                               }`}
                             >
-                              {lang === 'ar' ? f.name_ar : f.name_en}
+                              {getOptName(f)}
                             </button>
                           );
                         })}
@@ -1030,13 +1186,13 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                     {/* Target Role Text */}
                     <div>
                       <label className="block text-xs font-bold text-[#0F3D37] mb-1">
-                        {lang === 'ar' ? 'المسمى الوظيفي أو المهنة المستهدفة:' : 'Target Job Title or Profession:'}
+                        {lang === 'ar' ? 'المسمى الوظيفي أو المهنة المستهدفة:' : lang === 'fr' ? 'Métier ou fonction visée :' : 'Target Job Title or Profession:'}
                       </label>
                       <input
                         type="text"
                         value={formState.targetRoleText}
                         onChange={(e) => setFormState(prev => ({ ...prev, targetRoleText: e.target.value }))}
-                        placeholder={lang === 'ar' ? 'مثلاً: جراح، مهندس ذكاء اصطناعي، قاضي...' : 'e.g. Surgeon, AI Research Engineer, High School Teacher...'}
+                        placeholder={lang === 'ar' ? 'مثلاً: جراح، مهندس ذكاء اصطناعي، قاضي...' : lang === 'fr' ? 'ex. Chirurgien, Ingénieur IA, Magistrat...' : 'e.g. Surgeon, AI Research Engineer, High School Teacher...'}
                         className="w-full px-3 py-2 text-xs border border-slate-300 rounded bg-white text-[#0F3D37]"
                       />
                     </div>
@@ -1044,7 +1200,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                     {/* Motivations */}
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-[#0F3D37]">
-                        {lang === 'ar' ? 'دوافع اختيارك لهذا الهدف:' : 'Motivations for this Goal:'}
+                        {lang === 'ar' ? 'دوافع اختيارك لهذا الهدف:' : lang === 'fr' ? 'Principales motivations :' : 'Motivations for this Goal:'}
                       </label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {MOTIVATIONS.map((m) => {
@@ -1065,7 +1221,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                                 isSel ? 'bg-[#1F7A6E] text-white border-[#1F7A6E]' : 'bg-white border-slate-200 text-[#4B5563]'
                               }`}
                             >
-                              {lang === 'ar' ? m.name_ar : m.name_en}
+                              {getOptName(m)}
                             </button>
                           );
                         })}
@@ -1078,13 +1234,13 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                 {formState.goalClarity === 'general_direction' && (
                   <div className="space-y-6 p-5 bg-[#F7F6F2] rounded-xl border border-[#A7D0B8] animate-in fade-in">
                     <span className="text-xs font-bold text-[#1F7A6E] uppercase tracking-wider block">
-                      Route C · General Direction Exploration
+                      Route C · {lang === 'fr' ? 'Exploration de direction générale' : 'General Direction Exploration'}
                     </span>
 
                     {/* Considered Fields */}
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-[#0F3D37]">
-                        {lang === 'ar' ? 'المجالات التي تفكر فيها حالياً:' : 'Fields Under Consideration:'}
+                        {lang === 'ar' ? 'المجالات التي تفكر فيها حالياً:' : lang === 'fr' ? 'Filières actuellement envisagées :' : 'Fields Under Consideration:'}
                         <span className="text-red-500 ml-1">*</span>
                       </label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -1106,7 +1262,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                                 isSel ? 'bg-[#1F7A6E] text-white border-[#1F7A6E]' : 'bg-white border-slate-200 text-[#4B5563]'
                               }`}
                             >
-                              {lang === 'ar' ? f.name_ar : f.name_en}
+                              {getOptName(f)}
                             </button>
                           );
                         })}
@@ -1116,13 +1272,13 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                     {/* Future role status */}
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-[#0F3D37]">
-                        {lang === 'ar' ? 'حالة التفكير في المهنة المستقبلية:' : 'Status regarding potential future role:'}
+                        {lang === 'ar' ? 'حالة التفكير في المهنة المستقبلية:' : lang === 'fr' ? 'Statut quant au métier futur :' : 'Status regarding potential future role:'}
                       </label>
                       <div className="flex flex-wrap gap-2">
                         {[
-                          { id: 'has_ideas', en: 'Have some ideas', ar: 'لدي بعض الأفكار' },
-                          { id: 'exploring', en: 'Actively exploring options', ar: 'أستكشف الخيارات' },
-                          { id: 'not_specified', en: 'Not decided yet', ar: 'غير محدد بعد' }
+                          { id: 'has_ideas', en: 'Have some ideas', ar: 'لدي بعض الأفكار', fr: 'J\'ai quelques pistes' },
+                          { id: 'exploring', en: 'Actively exploring options', ar: 'أستكشف الخيارات', fr: 'J\'explore activement les options' },
+                          { id: 'not_specified', en: 'Not decided yet', ar: 'غير محدد بعد', fr: 'Pas encore fixé' }
                         ].map((stat) => (
                           <button
                             key={stat.id}
@@ -1134,7 +1290,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                                 : 'bg-white text-slate-700 border-slate-200'
                             }`}
                           >
-                            {lang === 'ar' ? stat.ar : stat.en}
+                            {lang === 'ar' ? stat.ar : lang === 'fr' ? stat.fr : stat.en}
                           </button>
                         ))}
                       </div>
@@ -1146,39 +1302,49 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                 {formState.goalClarity === 'no_defined_goal' && (
                   <div className="space-y-4 p-5 bg-[#F7F6F2] rounded-xl border border-[#A7D0B8] animate-in fade-in">
                     <span className="text-xs font-bold text-[#1F7A6E] uppercase tracking-wider block">
-                      Route D · Discovery & Open Exploration
+                      Route D · {lang === 'fr' ? 'Découverte & Orientation libre' : 'Discovery & Open Exploration'}
                     </span>
                     <p className="text-xs text-[#4B5563]">
                       {lang === 'ar'
                         ? 'ممتاز! هذا الاستبيان مصمم لمساعدتك على اكتشاف الخيارات المناسبة بدون فرض أي مسار مسبق.'
+                        : lang === 'fr'
+                        ? 'Parfait ! NaviStudo analysera vos aptitudes académiques et votre profil cognitif de façon totalement objective.'
                         : 'Perfect! NaviStudo will assess your performance profile and cognitive preferences objectively without assuming prior bias.'}
                     </p>
 
                     <div>
                       <label className="block text-xs font-bold text-[#0F3D37] mb-1">
-                        {lang === 'ar' ? 'ما هي المجالات التي تشعر بالفضول لاكتشافها؟' : 'Which fields are you open to discovering?'}
+                        {lang === 'ar' ? 'ما هي المجالات التي تشعر بالفضول لاكتشافها؟' : lang === 'fr' ? 'Domaines que vous aimeriez découvrir :' : 'Which fields are you open to discovering?'}
                       </label>
                       <input
                         type="text"
                         value={formState.fieldDiscoveryOtherText}
                         onChange={(e) => setFormState(prev => ({ ...prev, fieldDiscoveryOtherText: e.target.value }))}
-                        placeholder={lang === 'ar' ? 'أي ملاحظة أو قطاع ترغب في التعرف عليه...' : 'e.g. Any new emerging tech, medical research...'}
+                        placeholder={lang === 'ar' ? 'أي ملاحظة أو قطاع ترغب في التعرف عليه...' : lang === 'fr' ? 'ex. Technologies émergentes, recherche biomédicale...' : 'e.g. Any new emerging tech, medical research...'}
                         className="w-full px-3 py-2 text-xs border border-slate-300 rounded bg-white text-[#0F3D37]"
                       />
                     </div>
                   </div>
                 )}
 
-                {/* Priorities (Max 3 enforced!) */}
+                {/* Priorities (Max 3) */}
                 <div className="space-y-3 pt-6 border-t border-slate-100">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-bold text-[#0F3D37]">
-                        {lang === 'ar' ? '2. أهم الأولويات بالنسبة لك في مستقبلك المهني (اختر حتى 3)' : '2. Key Career Priorities (Select up to 3)'}
+                        {lang === 'ar'
+                          ? '2. أهم الأولويات بالنسبة لك في مستقبلك المهني (اختر حتى 3)'
+                          : lang === 'fr'
+                          ? '2. Priorités pour votre avenir professionnel (jusqu\'à 3)'
+                          : '2. Key Career Priorities (Select up to 3)'}
                         <span className="text-red-500 ml-1">*</span>
                       </h3>
                       <p className="text-xs text-[#4B5563]">
-                        {lang === 'ar' ? `المحدد: ${formState.priorityIds.length} من 3` : `Selected: ${formState.priorityIds.length} of 3`}
+                        {lang === 'ar'
+                          ? `المحدد: ${formState.priorityIds.length} من 3`
+                          : lang === 'fr'
+                          ? `Sélectionnées : ${formState.priorityIds.length} sur 3`
+                          : `Selected: ${formState.priorityIds.length} of 3`}
                       </p>
                     </div>
                   </div>
@@ -1214,7 +1380,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span>{lang === 'ar' ? prio.name_ar : prio.name_en}</span>
+                            <span>{getOptName(prio)}</span>
                             {isSel && <span>✓</span>}
                           </div>
                         </button>
@@ -1232,11 +1398,17 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
           <div className="space-y-8 animate-in fade-in duration-200">
             <div>
               <h3 className="text-base font-bold text-[#0F3D37]">
-                {lang === 'ar' ? 'تفضيلات التفكير وحل المشكلات' : 'Cognitive Problem-Solving Scales'}
+                {lang === 'ar'
+                  ? 'تفضيلات التفكير وحل المشكلات'
+                  : lang === 'fr'
+                  ? 'Préférences cognitives et résolution de problèmes'
+                  : 'Cognitive Problem-Solving Scales'}
               </h3>
               <p className="text-xs text-[#4B5563] mt-0.5">
                 {lang === 'ar'
                   ? 'تساعد هذه المقاييس على تحديد التخصصات الهندسية أو الطبية أو النظرية الأكثر توافقاً مع أسلوب تفكيرك.'
+                  : lang === 'fr'
+                  ? 'Ces échelles permettent d\'orienter vers les cursus théoriques, appliqués, humains ou techniques.'
                   : 'These scales calibrate your affinity for theoretical models vs applied hands-on work, and human-centered vs system tasks.'}
               </p>
             </div>
@@ -1244,11 +1416,11 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
             {/* Scale 1: Theory vs Application */}
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
               <div className="flex justify-between items-center text-xs font-bold text-[#0F3D37]">
-                <span>{lang === 'ar' ? '1. الجانب النظري والتجريدي' : '1. Theoretical Modeling'}</span>
+                <span>{lang === 'ar' ? '1. الجانب النظري والتجريدي' : lang === 'fr' ? '1. Approche théorique & concepts' : '1. Theoretical Modeling'}</span>
                 <span className="text-[#1F7A6E] bg-white px-2 py-0.5 rounded border border-slate-200">
-                  {lang === 'ar' ? `المستوى: ${formState.theoryApplicationPreference} من 5` : `Value: ${formState.theoryApplicationPreference} / 5`}
+                  {lang === 'ar' ? `المستوى: ${formState.theoryApplicationPreference} من 5` : `Valeur: ${formState.theoryApplicationPreference} / 5`}
                 </span>
-                <span>{lang === 'ar' ? 'الجانب التطبيقي والميداني' : 'Applied Hands-on Practice'}</span>
+                <span>{lang === 'ar' ? 'الجانب التطبيقي والميداني' : lang === 'fr' ? 'Application pratique & terrain' : 'Applied Hands-on Practice'}</span>
               </div>
               <input
                 type="range"
@@ -1260,20 +1432,20 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                 className="w-full accent-[#1F7A6E]"
               />
               <div className="flex justify-between text-[11px] text-slate-500">
-                <span>1 (نظريات وبحوث)</span>
-                <span>3 (توازن)</span>
-                <span>5 (تطبيق مباشر وورشات)</span>
+                <span>{lang === 'fr' ? '1 (Théorie & recherche)' : '1 (Theories & Research)'}</span>
+                <span>{lang === 'fr' ? '3 (Équilibré)' : '3 (Balanced)'}</span>
+                <span>{lang === 'fr' ? '5 (Pratique & ateliers)' : '5 (Workshops & Hands-on)'}</span>
               </div>
             </div>
 
             {/* Scale 2: Abstract vs Concrete */}
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
               <div className="flex justify-between items-center text-xs font-bold text-[#0F3D37]">
-                <span>{lang === 'ar' ? '2. المفاهيم المجردة والبرمجية' : '2. Abstract & Software Concepts'}</span>
+                <span>{lang === 'ar' ? '2. المفاهيم المجردة والبرمجية' : lang === 'fr' ? '2. Abstraction & Logiciel' : '2. Abstract & Software Concepts'}</span>
                 <span className="text-[#1F7A6E] bg-white px-2 py-0.5 rounded border border-slate-200">
-                  {lang === 'ar' ? `المستوى: ${formState.abstractConcretePreference} من 5` : `Value: ${formState.abstractConcretePreference} / 5`}
+                  {lang === 'ar' ? `المستوى: ${formState.abstractConcretePreference} من 5` : `Valeur: ${formState.abstractConcretePreference} / 5`}
                 </span>
-                <span>{lang === 'ar' ? 'الأنظمة المادية الملموسة' : 'Tangible Physical Systems'}</span>
+                <span>{lang === 'ar' ? 'الأنظمة المادية الملموسة' : lang === 'fr' ? 'Systèmes physiques & matériel' : 'Tangible Physical Systems'}</span>
               </div>
               <input
                 type="range"
@@ -1285,20 +1457,20 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                 className="w-full accent-[#1F7A6E]"
               />
               <div className="flex justify-between text-[11px] text-slate-500">
-                <span>1 (خوارزميات وأفكار)</span>
-                <span>3 (توازن)</span>
-                <span>5 (آلات ومعدات حقيقية)</span>
+                <span>{lang === 'fr' ? '1 (Algorithmes & idées)' : '1 (Algorithms)'}</span>
+                <span>{lang === 'fr' ? '3 (Équilibré)' : '3 (Balanced)'}</span>
+                <span>{lang === 'fr' ? '5 (Machines & matière)' : '5 (Machines & Concrete)'}</span>
               </div>
             </div>
 
             {/* Scale 3: Human vs System */}
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
               <div className="flex justify-between items-center text-xs font-bold text-[#0F3D37]">
-                <span>{lang === 'ar' ? '3. التواصل البشري والرعاية' : '3. People & Human Relations'}</span>
+                <span>{lang === 'ar' ? '3. التواصل البشري والرعاية' : lang === 'fr' ? '3. Relations humaines & soin' : '3. People & Human Relations'}</span>
                 <span className="text-[#1F7A6E] bg-white px-2 py-0.5 rounded border border-slate-200">
-                  {lang === 'ar' ? `المستوى: ${formState.humanSystemPreference} من 5` : `Value: ${formState.humanSystemPreference} / 5`}
+                  {lang === 'ar' ? `المستوى: ${formState.humanSystemPreference} من 5` : `Valeur: ${formState.humanSystemPreference} / 5`}
                 </span>
-                <span>{lang === 'ar' ? 'الأنظمة التقنية والآلات' : 'Technical Tools & Systems'}</span>
+                <span>{lang === 'ar' ? 'الأنظمة التقنية والآلات' : lang === 'fr' ? 'Outils techniques & systèmes' : 'Technical Tools & Systems'}</span>
               </div>
               <input
                 type="range"
@@ -1310,16 +1482,16 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                 className="w-full accent-[#1F7A6E]"
               />
               <div className="flex justify-between text-[11px] text-slate-500">
-                <span>1 (مرضى، طلاب، عملاء)</span>
-                <span>3 (توازن)</span>
-                <span>5 (حواسيب ومصانع)</span>
+                <span>{lang === 'fr' ? '1 (Humain & société)' : '1 (Human Centered)'}</span>
+                <span>{lang === 'fr' ? '3 (Équilibré)' : '3 (Balanced)'}</span>
+                <span>{lang === 'fr' ? '5 (Systèmes & informatique)' : '5 (Systems & Tools)'}</span>
               </div>
             </div>
 
             {/* Problem types */}
             <div className="space-y-2 pt-4 border-t border-slate-100">
               <h4 className="text-xs font-bold text-[#0F3D37]">
-                {lang === 'ar' ? 'أنواع المشكلات التي تبرع في حلها:' : 'Problem Types You Excel In:'}
+                {lang === 'ar' ? 'أنواع المشكلات التي تبرع في حلها:' : lang === 'fr' ? 'Types de problèmes que vous aimez résoudre :' : 'Problem Types You Excel In:'}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {PROBLEM_TYPES.map((pt) => {
@@ -1343,7 +1515,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span>{lang === 'ar' ? pt.name_ar : pt.name_en}</span>
+                        <span>{getOptName(pt)}</span>
                         {isSel && <span className="text-[#1F7A6E] font-bold">✓</span>}
                       </div>
                     </button>
@@ -1359,11 +1531,13 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
               <h3 className="text-lg font-bold text-[#0F3D37]">
-                {lang === 'ar' ? 'مراجعة بياناتك قبل توليد التوصيات' : 'Review & Confirm Your Answers'}
+                {lang === 'ar' ? 'مراجعة بياناتك قبل توليد التوصيات' : lang === 'fr' ? 'Vérification avant calcul des recommandations' : 'Review & Confirm Your Answers'}
               </h3>
               <p className="text-xs text-[#4B5563] mt-0.5">
                 {lang === 'ar'
                   ? 'تحقق من صحة المعطيات المدخلة. يمكنك العودة لتعديل أي قسم بالضغط على الأزرار السابقة.'
+                  : lang === 'fr'
+                  ? 'Vérifiez l\'exactitude des informations saisies. Vous pouvez revenir en arrière pour modifier.'
                   : 'Please review your answers before submitting. You can navigate back to modify any step.'}
               </p>
             </div>
@@ -1373,16 +1547,16 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
               <div className="p-4 bg-[#F7F6F2] rounded-xl border border-slate-200 flex justify-between items-center">
                 <div>
                   <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">
-                    {lang === 'ar' ? 'المرحلة الدراسية والشعبة' : 'Academic Stage & Branch'}
+                    {lang === 'ar' ? 'المرحلة الدراسية والشعبة' : lang === 'fr' ? 'Cycle & Filière' : 'Academic Stage & Branch'}
                   </span>
                   <h4 className="font-bold text-sm text-[#0F3D37] mt-0.5">
                     {isFirstYear
-                      ? (lang === 'ar' ? 'السنة الأولى ثانوي · جذع مشترك' : 'First Year Secondary · Common Core')
-                      : (lang === 'ar' ? `السنة الثالثة ثانوي · شعبة ${formState.branchId}` : `3rd Year Secondary · ${formState.branchId}`)}
+                      ? (lang === 'ar' ? 'السنة الأولى ثانوي · جذع مشترك' : lang === 'fr' ? '1ère Année Secondaire · Tronc Commun' : 'First Year Secondary · Common Core')
+                      : (lang === 'ar' ? `السنة الثالثة ثانوي · شعبة ${formState.branchId}` : lang === 'fr' ? `3ème Année Secondaire · Filière ${formState.branchId}` : `3rd Year Secondary · ${formState.branchId}`)}
                   </h4>
                   {formState.hasTakenBaccalaureate && (
                     <span className="text-xs text-[#1F7A6E] font-semibold block mt-0.5">
-                      {lang === 'ar' ? `معدل البكالوريا: ${formState.baccalaureateAverage} / 20` : `BAC Average: ${formState.baccalaureateAverage} / 20`}
+                      {lang === 'ar' ? `معدل البكالوريا: ${formState.baccalaureateAverage} / 20` : `Moyenne Bac : ${formState.baccalaureateAverage} / 20`}
                     </span>
                   )}
                 </div>
@@ -1390,27 +1564,27 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                   onClick={() => setCurrentStep(1)}
                   className="text-xs font-bold text-[#1F7A6E] hover:underline"
                 >
-                  {lang === 'ar' ? 'تعديل' : 'Edit'}
+                  {lang === 'ar' ? 'تعديل' : lang === 'fr' ? 'Modifier' : 'Edit'}
                 </button>
               </div>
 
               <div className="p-4 bg-[#F7F6F2] rounded-xl border border-slate-200 flex justify-between items-center">
                 <div>
                   <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">
-                    {lang === 'ar' ? 'المواد المفضلة والصعوبات' : 'Preferences & Difficulties'}
+                    {lang === 'ar' ? 'المواد المفضلة والصعوبات' : lang === 'fr' ? 'Matières & Difficultés' : 'Preferences & Difficulties'}
                   </span>
                   <p className="text-xs text-[#0F3D37] font-medium mt-0.5">
-                    {lang === 'ar' ? 'المواد المفضلة الأولى:' : 'Top preferred subject:'} {formState.subjectPreferenceOrder[0] || 'None'}
+                    {lang === 'fr' ? 'Matière favorite N°1 :' : lang === 'ar' ? 'المواد المفضلة الأولى:' : 'Top preferred subject:'} {formState.subjectPreferenceOrder[0] || 'None'}
                   </p>
                   <p className="text-xs text-slate-600 mt-0.5">
-                    {lang === 'ar' ? 'المواد ذات الصعوبة:' : 'Difficult subjects:'} {formState.difficultSubjectIds.join(', ') || (lang === 'ar' ? 'لا يوجد' : 'None')}
+                    {lang === 'fr' ? 'Matières éprouvantes :' : lang === 'ar' ? 'المواد ذات الصعوبة:' : 'Difficult subjects:'} {formState.difficultSubjectIds.join(', ') || (lang === 'ar' ? 'لا يوجد' : 'Aucune')}
                   </p>
                 </div>
                 <button
                   onClick={() => setCurrentStep(3)}
                   className="text-xs font-bold text-[#1F7A6E] hover:underline"
                 >
-                  {lang === 'ar' ? 'تعديل' : 'Edit'}
+                  {lang === 'ar' ? 'تعديل' : lang === 'fr' ? 'Modifier' : 'Edit'}
                 </button>
               </div>
 
@@ -1418,20 +1592,20 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
                 <div className="p-4 bg-[#F7F6F2] rounded-xl border border-slate-200 flex justify-between items-center">
                   <div>
                     <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">
-                      {lang === 'ar' ? 'وضوح الهدف والأولويات' : 'Goal Clarity & Priorities'}
+                      {lang === 'ar' ? 'وضوح الهدف والأولويات' : lang === 'fr' ? 'Objectif & Priorités' : 'Goal Clarity & Priorities'}
                     </span>
                     <h4 className="font-bold text-sm text-[#0F3D37] mt-0.5 capitalize">
                       {formState.goalClarity.replace('_', ' ')}
                     </h4>
                     <p className="text-xs text-slate-600 mt-0.5">
-                      {lang === 'ar' ? 'الأولويات المهنية:' : 'Priorities:'} {formState.priorityIds.join(', ')}
+                      {lang === 'fr' ? 'Priorités :' : lang === 'ar' ? 'الأولويات المهنية:' : 'Priorities:'} {formState.priorityIds.join(', ')}
                     </p>
                   </div>
                   <button
                     onClick={() => setCurrentStep(5)}
                     className="text-xs font-bold text-[#1F7A6E] hover:underline"
                   >
-                    {lang === 'ar' ? 'تعديل' : 'Edit'}
+                    {lang === 'ar' ? 'تعديل' : lang === 'fr' ? 'Modifier' : 'Edit'}
                   </button>
                 </div>
               )}
@@ -1443,6 +1617,8 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
               <span>
                 {lang === 'ar'
                   ? 'بياناتك جاهزة للإرسال إلى محرك التوجيه الأكاديمي. ستحصل على تحليل تفصيلي للتخصصات الأكثر مطابقة لمؤهلاتك وطموحاتك.'
+                  : lang === 'fr'
+                  ? 'Vos données sont prêtes à être analysées par le moteur d\'orientation selon les filières officielles de l\'enseignement supérieur.'
                   : 'Ready to submit. The recommendation engine will evaluate prerequisite branches, subject scores, and cognitive problem-solving matches.'}
               </span>
             </div>
@@ -1458,7 +1634,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
             className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-[#4B5563] hover:text-[#0F3D37] hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
-            <span>{lang === 'ar' ? 'السابق' : 'Previous'}</span>
+            <span>{lang === 'ar' ? 'السابق' : lang === 'fr' ? 'Précédent' : 'Previous'}</span>
           </button>
 
           {currentStep < totalSteps ? (
@@ -1467,7 +1643,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
               onClick={handleNext}
               className="px-6 py-2.5 bg-[#1F7A6E] hover:bg-[#0F3D37] text-white text-sm font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              <span>{lang === 'ar' ? 'التالي' : 'Next Step'}</span>
+              <span>{lang === 'ar' ? 'التالي' : lang === 'fr' ? 'Étape suivante' : 'Next Step'}</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
@@ -1480,12 +1656,24 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>{lang === 'ar' ? 'جاري توليد التوصيات...' : 'Generating Recommendations...'}</span>
+                  <span>
+                    {lang === 'ar'
+                      ? 'جاري توليد التوصيات...'
+                      : lang === 'fr'
+                      ? 'Calcul des recommandations en cours...'
+                      : 'Generating Recommendations...'}
+                  </span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>{lang === 'ar' ? 'تأكيد وتوليد التوصيات' : 'Generate Recommendations'}</span>
+                  <span>
+                    {lang === 'ar'
+                      ? 'تأكيد وتوليد التوصيات'
+                      : lang === 'fr'
+                      ? 'Calculer mes recommandations'
+                      : 'Generate Recommendations'}
+                  </span>
                 </>
               )}
             </button>

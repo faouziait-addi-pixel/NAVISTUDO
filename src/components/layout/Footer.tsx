@@ -2,10 +2,11 @@ import React from 'react';
 import { CompassLogo } from '../common/CompassLogo';
 import { ShieldCheck, Info, Compass } from 'lucide-react';
 import { ScreenType } from './Navbar';
+import { Language } from '../../types/contract';
 
 interface FooterProps {
   onNavigate: (screen: ScreenType) => void;
-  lang: 'en' | 'ar';
+  lang: Language;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
@@ -19,6 +20,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
             <p className="text-sm text-white/70 max-w-md leading-relaxed">
               {lang === 'ar'
                 ? 'منصة توجيه أكاديمي ومدرسي متخصصة في مساعدة طلاب المرحلة الثانوية على اكتشاف الشعب الدراسية والتخصصات الجامعية التي تناسب مؤهلاتهم وطموحاتهم.'
+                : lang === 'fr'
+                ? 'Plateforme d\'orientation scolaire et universitaire dédiée aux lycéens pour explorer les filières secondaires, les écoles supérieures et les spécialités universitaires correspondant à leurs forces réelles.'
                 : 'A dedicated academic orientation platform empowering secondary-school students to discover educational pathways, high school streams, and university majors aligned with their true strengths and aspirations.'}
             </p>
             <div className="flex items-center gap-2 text-xs text-[#A7D0B8] pt-1">
@@ -26,6 +29,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
               <span>
                 {lang === 'ar'
                   ? 'خصوصية كاملة: بياناتك الدراسية تُعالج بأمان لأغراض التوجيه فقط.'
+                  : lang === 'fr'
+                  ? 'Confidentialité totale : Vos données scolaires sont traitées exclusivement pour l\'orientation.'
                   : 'Full privacy: Academic profile data processed safely for orientation guidance.'}
               </span>
             </div>
@@ -34,7 +39,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
           {/* Navigation Quick Links */}
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-[#A7D0B8] mb-3">
-              {lang === 'ar' ? 'روابط سريعة' : 'Quick Navigation'}
+              {lang === 'ar' ? 'روابط سريعة' : lang === 'fr' ? 'Navigation Rapide' : 'Quick Navigation'}
             </h3>
             <ul className="space-y-2 text-sm">
               <li>
@@ -42,7 +47,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
                   onClick={() => onNavigate('dashboard')}
                   className="hover:text-white transition-colors text-left"
                 >
-                  {lang === 'ar' ? 'لوحة التحكم الرئيسية' : 'Student Dashboard'}
+                  {lang === 'ar' ? 'لوحة التحكم الرئيسية' : lang === 'fr' ? 'Tableau de bord élève' : 'Student Dashboard'}
                 </button>
               </li>
               <li>
@@ -50,7 +55,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
                   onClick={() => onNavigate('questionnaire')}
                   className="hover:text-white transition-colors text-left"
                 >
-                  {lang === 'ar' ? 'استبيان التوجيه المدرسي' : 'Orientation Questionnaire'}
+                  {lang === 'ar' ? 'استبيان التوجيه المدرسي' : lang === 'fr' ? 'Questionnaire d\'orientation' : 'Orientation Questionnaire'}
                 </button>
               </li>
               <li>
@@ -58,7 +63,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
                   onClick={() => onNavigate('explore')}
                   className="hover:text-white transition-colors text-left"
                 >
-                  {lang === 'ar' ? 'دليل الشعب والتخصصات' : 'Explore Academic Majors'}
+                  {lang === 'ar' ? 'دليل الشعب والتخصصات' : lang === 'fr' ? 'Guide des filières et écoles' : 'Explore Academic Majors'}
                 </button>
               </li>
               <li>
@@ -66,7 +71,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
                   onClick={() => onNavigate('results')}
                   className="hover:text-white transition-colors text-left"
                 >
-                  {lang === 'ar' ? 'استعراض التوصيات' : 'Orientation Results'}
+                  {lang === 'ar' ? 'استعراض التوصيات' : lang === 'fr' ? 'Résultats d\'orientation' : 'Orientation Results'}
                 </button>
               </li>
             </ul>
@@ -75,13 +80,15 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
           {/* Academic disclaimer */}
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-[#A7D0B8] mb-3">
-              {lang === 'ar' ? 'تنويه أكاديمي' : 'Academic Advisory'}
+              {lang === 'ar' ? 'تنويه أكاديمي' : lang === 'fr' ? 'Avertissement Pédagogique' : 'Academic Advisory'}
             </h3>
             <div className="flex items-start gap-2 text-xs text-white/60 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/10">
               <Info className="w-4 h-4 shrink-0 mt-0.5 text-[#A7D0B8]" />
               <p>
                 {lang === 'ar'
                   ? 'التوصيات المقدمة هي أدوات استرشادية واستكشافية ولا تشكل قبولاً مضموناً أو شروطاً رسمية لوزارة التعليم العالي.'
+                  : lang === 'fr'
+                  ? 'Les recommandations fournies sont des outils d\'aide à la décision et ne constituent ni une admission garantie ni des critères officiels d\'affectation.'
                   : 'Recommendations are educational decision-support tools and do not constitute guaranteed admission, official quotas, or binding eligibility.'}
               </p>
             </div>
@@ -91,12 +98,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
         <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-white/50 gap-3">
           <div className="flex items-center gap-2">
             <Compass className="w-3.5 h-3.5 text-[#A7D0B8]" />
-            <span>NaviStudo &copy; {new Date().getFullYear()} — Built for Student Success</span>
+            <span>NaviStudo &copy; {new Date().getFullYear()} — {lang === 'fr' ? 'Conçu pour la réussite des élèves' : 'Built for Student Success'}</span>
           </div>
           <div className="flex items-center gap-4">
             <span>MVP v1.0 Spec-Compliant</span>
             <span>·</span>
             <span>All 4 Routes Implemented</span>
+            <span>·</span>
+            <span>Français / English / العربية</span>
           </div>
         </div>
       </div>

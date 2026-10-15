@@ -4,7 +4,6 @@ import {
   Compass,
   Search,
   ArrowRight,
-  Sparkles,
   BookOpen,
   Award,
   CheckCircle2,
@@ -15,8 +14,10 @@ import {
   Bookmark
 } from 'lucide-react';
 import { ScreenType } from '../layout/Navbar';
-import { MajorRecommendation } from '../../types/contract';
+import { MajorRecommendation, Language } from '../../types/contract';
 import { MAJORS_DATABASE } from '../../data/majorsDatabase';
+
+import { AppUser } from '../../services/auth';
 
 interface DashboardViewProps {
   onNavigate: (screen: ScreenType) => void;
@@ -27,7 +28,9 @@ interface DashboardViewProps {
   currentBranchId?: string;
   recommendations: MajorRecommendation[];
   bookmarkedMajorIds: string[];
-  lang: 'en' | 'ar';
+  lang: Language;
+  currentUser?: AppUser | null;
+  onOpenAuth?: (tab?: 'anonymous' | 'login' | 'register') => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -39,7 +42,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   currentBranchId,
   recommendations,
   bookmarkedMajorIds,
-  lang
+  lang,
+  currentUser,
+  onOpenAuth
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -47,6 +52,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const filteredMajors = searchQuery.trim()
     ? MAJORS_DATABASE.filter(m =>
         m.title_en.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.title_fr && m.title_fr.toLowerCase().includes(searchQuery.toLowerCase())) ||
         m.title_ar.includes(searchQuery) ||
         m.category.toLowerCase().includes(searchQuery.toLowerCase())
       ).slice(0, 4)
@@ -54,14 +60,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const getBranchLabel = (id?: string) => {
     switch (id) {
-      case 'experimental_sciences': return lang === 'ar' ? 'علوم تجريبية' : 'Experimental Sciences';
-      case 'mathematics': return lang === 'ar' ? 'رياضيات' : 'Mathematics';
-      case 'mathematical_technique': return lang === 'ar' ? 'تقني رياضي' : 'Technical Math';
-      case 'management_and_economics': return lang === 'ar' ? 'تسيير واقتصاد' : 'Economics & Mgmt';
-      case 'foreign_languages': return lang === 'ar' ? 'لغات أجنبية' : 'Foreign Languages';
-      case 'literature_and_philosophy': return lang === 'ar' ? 'آداب وفلسفة' : 'Literature & Philosophy';
-      default: return id || (lang === 'ar' ? 'غير محدد' : 'General');
+      case 'experimental_sciences':
+        return lang === 'ar' ? 'علوم تجريبية' : lang === 'fr' ? 'Sciences Expérimentales' : 'Experimental Sciences';
+      case 'mathematics':
+        return lang === 'ar' ? 'رياضيات' : lang === 'fr' ? 'Mathématiques' : 'Mathematics';
+      case 'mathematical_technique':
+        return lang === 'ar' ? 'تقني رياضي' : lang === 'fr' ? 'Technique Mathématique' : 'Technical Math';
+      case 'management_and_economics':
+        return lang === 'ar' ? 'تسيير واقتصاد' : lang === 'fr' ? 'Gestion & Économie' : 'Economics & Mgmt';
+      case 'foreign_languages':
+        return lang === 'ar' ? 'لغات أجنبية' : lang === 'fr' ? 'Langues Étrangères' : 'Foreign Languages';
+      case 'literature_and_philosophy':
+        return lang === 'ar' ? 'آداب وفلسفة' : lang === 'fr' ? 'Lettres & Philosophie' : 'Literature & Philosophy';
+      default:
+        return id || (lang === 'ar' ? 'غير محدد' : lang === 'fr' ? 'Général' : 'General');
     }
+  };
+
+  const getMajorTitle = (m: { title_ar: string; title_en: string; title_fr?: string }) => {
+    if (lang === 'ar') return m.title_ar;
+    if (lang === 'fr' && m.title_fr) return m.title_fr;
+    return m.title_en;
+  };
+
+  const getMajorExplanation = (m: { explanation_ar: string; explanation_en: string; explanation_fr?: string }) => {
+    if (lang === 'ar') return m.explanation_ar;
+    if (lang === 'fr' && m.explanation_fr) return m.explanation_fr;
+    return m.explanation_en;
   };
 
   return (
@@ -74,7 +99,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={lang === 'ar' ? 'ابحث عن تخصص جامعي، كلية، أو شعبة...' : 'Search majors, faculties, or disciplines...'}
+            placeholder={
+              lang === 'ar'
+                ? 'ابحث عن تخصص جامعي، كلية، أو شعبة...'
+                : lang === 'fr'
+                ? 'Rechercher une filière, une école ou une spécialité...'
+                : 'Search majors, faculties, or disciplines...'
+            }
             className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm text-[#0F3D37] placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#1F7A6E]"
           />
         </div>
@@ -85,7 +116,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="text-xs font-semibold text-[#1F7A6E] hover:text-[#0F3D37] flex items-center gap-1 transition-colors"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>{lang === 'ar' ? 'فهرس التخصصات الكامل' : 'Browse All Majors'}</span>
+            <span>
+              {lang === 'ar'
+                ? 'فهرس التخصصات الكامل'
+                : lang === 'fr'
+                ? 'Catalogue complet des filières'
+                : 'Browse All Majors'}
+            </span>
           </button>
         </div>
       </div>
@@ -94,7 +131,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {searchQuery.trim() && (
         <div className="bg-white rounded-xl p-4 shadow-lg border border-[#A7D0B8] space-y-2 animate-in fade-in duration-150">
           <div className="text-xs font-bold text-[#4B5563] uppercase tracking-wider">
-            {lang === 'ar' ? 'نتائج البحث السريع' : 'Search Matches'} ({filteredMajors.length})
+            {lang === 'ar' ? 'نتائج البحث السريع' : lang === 'fr' ? 'Résultats de recherche' : 'Search Matches'} ({filteredMajors.length})
           </div>
           {filteredMajors.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -105,8 +142,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   className="p-3 rounded-lg border border-slate-100 hover:border-[#1F7A6E] hover:bg-[#F7F6F2] transition-colors cursor-pointer flex items-center justify-between"
                 >
                   <div>
-                    <h4 className="text-sm font-bold text-[#0F3D37]">{lang === 'ar' ? m.title_ar : m.title_en}</h4>
-                    <p className="text-xs text-[#4B5563] mt-0.5 capitalize">{m.category} · {m.study_duration_years} Years</p>
+                    <h4 className="text-sm font-bold text-[#0F3D37]">{getMajorTitle(m)}</h4>
+                    <p className="text-xs text-[#4B5563] mt-0.5 capitalize">
+                      {m.category} · {m.study_duration_years} {lang === 'fr' ? 'ans' : lang === 'ar' ? 'سنوات' : 'Years'}
+                    </p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-[#1F7A6E] shrink-0" />
                 </div>
@@ -114,7 +153,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           ) : (
             <p className="text-xs text-slate-500 py-2">
-              {lang === 'ar' ? 'لم يتم العثور على تخصص مطابق. حاول البحث بكلمة أخرى.' : 'No matching majors found. Try another search term.'}
+              {lang === 'ar'
+                ? 'لم يتم العثور على تخصص مطابق. حاول البحث بكلمة أخرى.'
+                : lang === 'fr'
+                ? 'Aucune filière trouvée pour cette recherche. Essayez un autre mot-clé.'
+                : 'No matching majors found. Try another search term.'}
             </p>
           )}
         </div>
@@ -126,24 +169,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="p-8 sm:p-10 md:col-span-8 space-y-4 z-10">
             <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#A7D0B8]">
               <Compass className="w-4 h-4" />
-              <span>{hasProfile ? (lang === 'ar' ? 'مرحباً بك مجدداً في مسارك' : 'Welcome to your guidance journey') : (lang === 'ar' ? 'ابدأ رحلة التوجيه' : 'Start your guidance path')}</span>
+              <span>
+                {hasProfile
+                  ? (lang === 'ar' ? 'مرحباً بك مجدداً في مسارك' : lang === 'fr' ? 'Bienvenue sur votre parcours d\'orientation' : 'Welcome to your guidance journey')
+                  : (lang === 'ar' ? 'ابدأ رحلة التوجيه' : lang === 'fr' ? 'Démarrez votre orientation' : 'Start your guidance path')}
+              </span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">
               {hasProfile ? (
                 <>
-                  {lang === 'ar' ? 'ملفك الأكاديمي قيد المتابعة' : 'Your Academic Profile is Active'}
+                  {lang === 'ar'
+                    ? 'ملفك الأكاديمي قيد المتابعة'
+                    : lang === 'fr'
+                    ? 'Votre profil scolaire est actif'
+                    : 'Your Academic Profile is Active'}
                   <span className="block text-[#A7D0B8] text-xl sm:text-2xl mt-1 font-semibold">
                     {currentStageId === 'first_year_secondary'
-                      ? (lang === 'ar' ? 'السنة الأولى ثانوي (جذع مشترك)' : 'First Year Secondary (Common Core)')
-                      : `${lang === 'ar' ? 'شعبة:' : 'Branch:'} ${getBranchLabel(currentBranchId)}`}
+                      ? (lang === 'ar' ? 'السنة الأولى ثانوي (جذع مشترك)' : lang === 'fr' ? '1ère Année Secondaire (Tronc Commun)' : 'First Year Secondary (Common Core)')
+                      : `${lang === 'ar' ? 'شعبة:' : lang === 'fr' ? 'Filière :' : 'Branch:'} ${getBranchLabel(currentBranchId)}`}
                   </span>
                 </>
               ) : (
                 <>
-                  {lang === 'ar' ? 'اكتشف مستقبلك الدراسي والجامعي' : 'Discover Your Academic Direction'}
+                  {lang === 'ar'
+                    ? 'اكتشف مستقبلك الدراسي والجامعي'
+                    : lang === 'fr'
+                    ? 'Trouvez votre orientation scolaire & supérieure'
+                    : 'Discover Your Academic Direction'}
                   <span className="block text-[#A7D0B8] text-xl sm:text-2xl mt-1 font-semibold">
-                    {lang === 'ar' ? 'توجيه علمي مبني على قدراتك واهتماماتك' : 'Empowered by real subject scores & aspirations'}
+                    {lang === 'ar'
+                      ? 'توجيه علمي مبني على قدراتك واهتماماتك'
+                      : lang === 'fr'
+                      ? 'Recommandations fondées sur vos notes et vos passions'
+                      : 'Empowered by real subject scores & aspirations'}
                   </span>
                 </>
               )}
@@ -153,9 +212,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {hasProfile && recommendations.length > 0
                 ? (lang === 'ar'
                     ? 'تم توليد توصياتك الأكاديمية بنجاح بناءً على إجابات الاستبيان. يمكنك استعراضها، حفظ التخصصات، أو تحديث معطياتك في أي وقت.'
+                    : lang === 'fr'
+                    ? 'Vos recommandations personnalisées sont prêtes. Explorez les spécialités adaptées, sauvegardez vos favoris ou mettez à jour vos données.'
                     : 'Your recommendations are ready based on your completed profile. Explore matched majors, bookmark top choices, or re-evaluate your preferences.')
                 : (lang === 'ar'
                     ? 'أجب عن استبيان التوجيه المدرسي في بضع دقائق للحصول على تحليل مخصص ومطابقة دقيقة للشعب والتخصصات الجامعية.'
+                    : lang === 'fr'
+                    ? 'Remplissez le questionnaire d\'orientation en quelques minutes pour obtenir une analyse personnalisée et des correspondances détaillées.'
                     : 'Complete the structured guidance questionnaire to unlock tailored academic pathways and university recommendations.')}
             </p>
 
@@ -167,14 +230,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     className="px-5 py-2.5 bg-[#1F7A6E] hover:bg-[#A7D0B8] hover:text-[#0F3D37] text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
                   >
                     <Award className="w-4 h-4" />
-                    <span>{lang === 'ar' ? 'عرض التوصيات والنتائج' : 'View Recommendations'}</span>
+                    <span>
+                      {lang === 'ar'
+                        ? 'عرض التوصيات والنتائج'
+                        : lang === 'fr'
+                        ? 'Consulter mes recommandations'
+                        : 'View Recommendations'}
+                    </span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => onNavigate('questionnaire')}
                     className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-medium text-sm rounded-xl border border-white/20 transition-colors flex items-center gap-2"
                   >
-                    <span>{lang === 'ar' ? 'إعادة الاستبيان / تعديل' : 'Edit Questionnaire'}</span>
+                    <span>
+                      {lang === 'ar'
+                        ? 'إعادة الاستبيان / تعديل'
+                        : lang === 'fr'
+                        ? 'Modifier le questionnaire'
+                        : 'Edit Questionnaire'}
+                    </span>
                   </button>
                 </>
               ) : (
@@ -183,7 +258,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   className="px-6 py-3 bg-[#1F7A6E] hover:bg-[#A7D0B8] hover:text-[#0F3D37] text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <Compass className="w-4 h-4" />
-                  <span>{lang === 'ar' ? 'بدء استبيان التوجيه' : 'Start Guidance Questionnaire'}</span>
+                  <span>
+                    {lang === 'ar'
+                      ? 'بدء استبيان التوجيه'
+                      : lang === 'fr'
+                      ? 'Lancer le questionnaire'
+                      : 'Start Guidance Questionnaire'}
+                  </span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               )}
@@ -203,22 +284,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center gap-2">
               <CheckCircle2 className={`w-5 h-5 ${completionPercentage === 100 ? 'text-emerald-600' : 'text-[#1F7A6E]'}`} />
               <h3 className="text-base font-bold text-[#0F3D37]">
-                {lang === 'ar' ? 'حالة تقدم التوجيه الدراسي' : 'Orientation Guidance Status'}
+                {lang === 'ar'
+                  ? 'حالة تقدم التوجيه الدراسي'
+                  : lang === 'fr'
+                  ? 'Progression de l\'orientation'
+                  : 'Orientation Guidance Status'}
               </h3>
             </div>
             <p className="text-xs text-[#4B5563]">
               {hasProfile
                 ? (completionPercentage === 100
-                    ? (lang === 'ar' ? 'اكتملت جميع أقسام الاستبيان بنجاح.' : 'Profile complete and ready for exploration.')
-                    : (lang === 'ar' ? 'الاستبيان مكتمل جزئياً.' : 'Questionnaire partially completed.'))
-                : (lang === 'ar' ? 'لم تبدأ الاستبيان بعد. ابدأ الآن لاكتشاف مسارك.' : 'No profile data yet. Take the questionnaire to get started.')}
+                    ? (lang === 'ar' ? 'اكتملت جميع أقسام الاستبيان بنجاح.' : lang === 'fr' ? 'Toutes les étapes sont complétées avec succès.' : 'Profile complete and ready for exploration.')
+                    : (lang === 'ar' ? 'الاستبيان مكتمل جزئياً.' : lang === 'fr' ? 'Questionnaire partiellement rempli.' : 'Questionnaire partially completed.'))
+                : (lang === 'ar' ? 'لم تبدأ الاستبيان بعد. ابدأ الآن لاكتشاف مسارك.' : lang === 'fr' ? 'Aucune donnée pour l\'instant. Commencez le questionnaire.' : 'No profile data yet. Take the questionnaire to get started.')}
             </p>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="w-40 sm:w-48 space-y-1">
               <div className="flex justify-between text-xs font-semibold text-[#0F3D37]">
-                <span>{lang === 'ar' ? 'الإنجاز' : 'Completion'}</span>
+                <span>{lang === 'ar' ? 'الإنجاز' : lang === 'fr' ? 'Complété' : 'Completion'}</span>
                 <span>{completionPercentage}%</span>
               </div>
               <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
@@ -233,9 +318,76 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onClick={() => onNavigate('profile')}
               className="px-3.5 py-1.5 text-xs font-semibold text-[#1F7A6E] hover:text-[#0F3D37] border border-slate-200 hover:border-[#1F7A6E] rounded-lg transition-colors whitespace-nowrap"
             >
-              {lang === 'ar' ? 'عرض الملف' : 'View Profile'}
+              {lang === 'ar' ? 'عرض الملف' : lang === 'fr' ? 'Voir mon profil' : 'View Profile'}
             </button>
           </div>
+        </div>
+
+        {/* Auth & Cloud Sync Status Row */}
+        <div className="mt-4 pt-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${currentUser ? (currentUser.isAnonymous ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-300'}`} />
+            <span className="text-[#4B5563]">
+              {currentUser ? (
+                currentUser.isAnonymous ? (
+                  lang === 'fr'
+                    ? 'Connecté en mode Invité (Anonyme) · Réponses sauvegardées localement.'
+                    : lang === 'ar'
+                    ? 'متصل كضيف مجهول · يتم حفظ إجاباتك محلياً.'
+                    : 'Browsing as Anonymous Guest · Session data active.'
+                ) : (
+                  lang === 'fr'
+                    ? `Synchronisé sur le compte : ${currentUser.displayName || currentUser.email}`
+                    : lang === 'ar'
+                    ? `متزامن مع الحساب: ${currentUser.displayName || currentUser.email}`
+                    : `Synced with student account: ${currentUser.displayName || currentUser.email}`
+                )
+              ) : (
+                lang === 'fr'
+                  ? 'Non authentifié. Connectez-vous ou activez l\'accès anonyme pour sécuriser vos choix.'
+                  : lang === 'ar'
+                  ? 'غير مسجل. سجل الدخول أو استخدم الوصول المجهول لحفظ خياراتك.'
+                  : 'Not authenticated. Sign in or use anonymous guest access to save choices.'
+              )}
+            </span>
+          </div>
+
+          {onOpenAuth && (
+            <div className="flex items-center gap-2">
+              {currentUser ? (
+                currentUser.isAnonymous ? (
+                  <button
+                    onClick={() => onOpenAuth('register')}
+                    className="text-[#1F7A6E] hover:underline font-bold text-xs cursor-pointer flex items-center gap-1"
+                  >
+                    <span>{lang === 'fr' ? '⭐ Enregistrer un compte permanent' : '⭐ Convert to Permanent Account'}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onOpenAuth('login')}
+                    className="text-slate-600 hover:text-[#0F3D37] text-xs font-semibold cursor-pointer"
+                  >
+                    {lang === 'fr' ? 'Détails du compte' : 'Account Details'}
+                  </button>
+                )
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onOpenAuth('anonymous')}
+                    className="px-2.5 py-1 bg-teal-50 text-[#1F7A6E] font-bold rounded-lg border border-teal-200 hover:bg-teal-100 cursor-pointer"
+                  >
+                    {lang === 'fr' ? 'Accès Invité (1 clic)' : 'Guest Access'}
+                  </button>
+                  <button
+                    onClick={() => onOpenAuth('login')}
+                    className="px-2.5 py-1 bg-white text-slate-700 font-bold rounded-lg border border-slate-300 hover:bg-slate-50 cursor-pointer"
+                  >
+                    {lang === 'fr' ? 'Se connecter' : 'Sign In'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -245,17 +397,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-[#0F3D37]">
-                {lang === 'ar' ? 'أفضل التخصصات المطابقة لملفك' : 'Top Recommended Majors for You'}
+                {lang === 'ar'
+                  ? 'أفضل التخصصات المطابقة لملفك'
+                  : lang === 'fr'
+                  ? 'Meilleures filières correspondant à votre profil'
+                  : 'Top Recommended Majors for You'}
               </h2>
               <p className="text-xs text-[#4B5563]">
-                {lang === 'ar' ? 'مرتبة وفق أعلى درجات التوافق مع إجاباتك' : 'Ranked according to highest compatibility with your answers'}
+                {lang === 'ar'
+                  ? 'مرتبة وفق أعلى درجات التوافق مع إجاباتك'
+                  : lang === 'fr'
+                  ? 'Classées par ordre décroissant de compatibilité'
+                  : 'Ranked according to highest compatibility with your answers'}
               </p>
             </div>
             <button
               onClick={() => onNavigate('results')}
               className="text-xs font-semibold text-[#1F7A6E] hover:text-[#0F3D37] flex items-center gap-1"
             >
-              <span>{lang === 'ar' ? 'عرض كافة النتائج' : 'See all recommendations'}</span>
+              <span>{lang === 'ar' ? 'عرض كافة النتائج' : lang === 'fr' ? 'Voir tous les résultats' : 'See all recommendations'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -277,16 +437,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
 
                     <h3 className="font-bold text-base text-[#0F3D37] line-clamp-2">
-                      {lang === 'ar' ? rec.title_ar : rec.title_en}
+                      {getMajorTitle(rec)}
                     </h3>
 
                     <p className="text-xs text-[#4B5563] line-clamp-3 leading-relaxed">
-                      {lang === 'ar' ? rec.explanation_ar : rec.explanation_en}
+                      {getMajorExplanation(rec)}
                     </p>
 
                     <div className="pt-2 text-xs text-slate-500 flex items-center gap-2">
                       <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{rec.study_duration_years} {lang === 'ar' ? 'سنوات دراسة' : 'Years'}</span>
+                      <span>
+                        {rec.study_duration_years} {lang === 'fr' ? 'ans d\'études' : lang === 'ar' ? 'سنوات دراسة' : 'Years'}
+                      </span>
                       <span>·</span>
                       <span className="capitalize">{rec.category}</span>
                     </div>
@@ -297,14 +459,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       onClick={() => onSelectMajor(rec.major_id)}
                       className="text-xs font-semibold text-[#1F7A6E] hover:text-[#0F3D37] flex items-center gap-1"
                     >
-                      <span>{lang === 'ar' ? 'التفاصيل الكاملة' : 'View Details'}</span>
+                      <span>{lang === 'ar' ? 'التفاصيل الكاملة' : lang === 'fr' ? 'Détails de la filière' : 'View Details'}</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
 
                     {isSaved && (
                       <span className="text-[11px] text-[#1F7A6E] flex items-center gap-1 font-medium">
                         <Bookmark className="w-3 h-3 fill-current" />
-                        <span>{lang === 'ar' ? 'محفوظ' : 'Saved'}</span>
+                        <span>{lang === 'ar' ? 'محفوظ' : lang === 'fr' ? 'Enregistré' : 'Saved'}</span>
                       </span>
                     )}
                   </div>
@@ -321,11 +483,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="max-w-md mx-auto space-y-1">
             <h3 className="text-lg font-bold text-[#0F3D37]">
-              {lang === 'ar' ? 'لا توجد توصيات حتى الآن' : 'No Recommendations Generated Yet'}
+              {lang === 'ar'
+                ? 'لا توجد توصيات حتى الآن'
+                : lang === 'fr'
+                ? 'Aucune recommandation générée'
+                : 'No Recommendations Generated Yet'}
             </h3>
             <p className="text-xs sm:text-sm text-[#4B5563] leading-relaxed">
               {lang === 'ar'
                 ? 'يحتاج النظام إلى الإجابة عن استبيان التوجيه للتعرف على مستواك الدراسي واهتماماتك وميولك.'
+                : lang === 'fr'
+                ? 'Remplissez le questionnaire pour recevoir des recommandations académiques adaptées à vos notes et objectifs.'
                 : 'Take the quick guidance questionnaire to receive personalized, evidence-grounded recommendations for secondary and university paths.'}
             </p>
           </div>
@@ -333,7 +501,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => onNavigate('questionnaire')}
             className="px-6 py-2.5 bg-[#1F7A6E] hover:bg-[#0F3D37] text-white font-semibold text-sm rounded-xl shadow-xs transition-colors inline-flex items-center gap-2 cursor-pointer"
           >
-            <span>{lang === 'ar' ? 'بدء الاستبيان الآن' : 'Start Questionnaire'}</span>
+            <span>{lang === 'ar' ? 'بدء الاستبيان الآن' : lang === 'fr' ? 'Commencer le questionnaire' : 'Start Questionnaire'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </section>
@@ -347,19 +515,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <GraduationCap className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-[#0F3D37]">
-              {lang === 'ar' ? 'الشعب الثانوية والتخصصات' : 'Secondary Branches & Higher Schools'}
+              {lang === 'ar' ? 'الشعب الثانوية والتخصصات' : lang === 'fr' ? 'Filières secondaires & Grandes Écoles' : 'Secondary Branches & Higher Schools'}
             </h3>
           </div>
           <p className="text-xs text-[#4B5563] leading-relaxed">
             {lang === 'ar'
               ? 'استكشف التوزيع الأكاديمي لشعب التعليم الثانوي الجزائري: العلوم التجريبية، الرياضيات، التقني رياضي، التسيير، واللغات.'
+              : lang === 'fr'
+              ? 'Découvrez les prérequis, coefficients et débouchés des filières du secondaire : Sciences, Mathématiques, Technique Math, Gestion et Langues.'
               : 'Browse prerequisites, subjects, coefficients, and pathways across all Algerian secondary education branches.'}
           </p>
           <button
             onClick={() => onNavigate('explore')}
             className="text-xs font-semibold text-[#1F7A6E] hover:text-[#0F3D37] flex items-center gap-1 pt-1"
           >
-            <span>{lang === 'ar' ? 'استعراض الدليل الأكاديمي' : 'Explore Academic Directory'}</span>
+            <span>{lang === 'ar' ? 'استعراض الدليل الأكاديمي' : lang === 'fr' ? 'Consulter le répertoire' : 'Explore Academic Directory'}</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -370,19 +540,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <TrendingUp className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-[#0F3D37]">
-              {lang === 'ar' ? 'التوجيه نحو المهن المستقبلية' : 'Future Career Sectors'}
+              {lang === 'ar' ? 'التوجيه نحو المهن المستقبلية' : lang === 'fr' ? 'Secteurs d\'avenir & Métiers' : 'Future Career Sectors'}
             </h3>
           </div>
           <p className="text-xs text-[#4B5563] leading-relaxed">
             {lang === 'ar'
               ? 'تعرف على التخصصات ذات الطلب المرتفع في سوق العمل: الذكاء الاصطناعي، الطاقات المتجددة، الطب، والصناعات الدوائية.'
+              : lang === 'fr'
+              ? 'Explorez les métiers à fort potentiel : IA & data science, énergies renouvelables, chirurgie médicale et industrie pharmaceutique.'
               : 'Discover evolving career fields in technology, engineering, healthcare, and finance aligned with national development goals.'}
           </p>
           <button
             onClick={() => onNavigate('explore')}
             className="text-xs font-semibold text-[#1F7A6E] hover:text-[#0F3D37] flex items-center gap-1 pt-1"
           >
-            <span>{lang === 'ar' ? 'تصفح التخصصات الواعدة' : 'View High-Demand Majors'}</span>
+            <span>{lang === 'ar' ? 'تصفح التخصصات الواعدة' : lang === 'fr' ? 'Voir les métiers porteurs' : 'View High-Demand Majors'}</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>

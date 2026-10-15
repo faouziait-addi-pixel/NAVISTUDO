@@ -3,6 +3,8 @@
  * Data Contract Types & Schemas
  */
 
+export type Language = 'en' | 'ar' | 'fr';
+
 export type AcademicStageId = 'first_year_secondary' | 'third_year_secondary';
 
 export type GoalClarityId = 'clear_goal' | 'general_direction' | 'no_defined_goal';
@@ -115,11 +117,13 @@ export interface MajorRecommendation {
   major_id: string;
   title_en: string;
   title_ar: string;
+  title_fr?: string;
   category: 'engineering' | 'health' | 'science' | 'humanities' | 'business';
   match_score: number; // 0 to 100
   match_level: 'strong_match' | 'great_alternative' | 'field_to_explore';
   explanation_en: string;
   explanation_ar: string;
+  explanation_fr?: string;
   key_subjects: string[];
   typical_careers: string[];
   prerequisite_branches: string[];

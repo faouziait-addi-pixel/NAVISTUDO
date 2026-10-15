@@ -1,19 +1,20 @@
 import React from 'react';
 import { QuestionnaireFormState } from '../../services/payloadBuilder';
 import { MAJORS_DATABASE } from '../../data/majorsDatabase';
+import { Language } from '../../types/contract';
 import {
   User,
   GraduationCap,
-  Award,
-  BookOpen,
   Bookmark,
   RotateCcw,
   CheckCircle,
-  Clock,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  LogOut,
+  Trash2
 } from 'lucide-react';
 import { ScreenType } from '../layout/Navbar';
+import { AppUser } from '../../services/auth';
 
 interface ProfileViewProps {
   formState: QuestionnaireFormState;
@@ -23,7 +24,11 @@ interface ProfileViewProps {
   onSelectMajor: (majorId: string) => void;
   onEditQuestionnaire: () => void;
   onNavigate: (screen: ScreenType) => void;
-  lang: 'en' | 'ar';
+  lang: Language;
+  currentUser?: AppUser | null;
+  onOpenAuth?: (tab?: 'anonymous' | 'login' | 'register') => void;
+  onLogout?: () => void;
+  onResetData?: () => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
@@ -34,7 +39,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onSelectMajor,
   onEditQuestionnaire,
   onNavigate,
-  lang
+  lang,
+  currentUser,
+  onOpenAuth,
+  onLogout,
+  onResetData
 }) => {
   const isFirstYear = formState.stageId === 'first_year_secondary';
 
@@ -43,6 +52,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   // Subject scores count
   const scoredCount = Object.keys(formState.subjectScores).length;
+
+  const getMajorTitle = (m: { title_ar: string; title_en: string; title_fr?: string }) => {
+    if (lang === 'ar') return m.title_ar;
+    if (lang === 'fr' && m.title_fr) return m.title_fr;
+    return m.title_en;
+  };
+
+  const getMajorDesc = (m: { description_ar: string; description_en: string; description_fr?: string }) => {
+    if (lang === 'ar') return m.description_ar;
+    if (lang === 'fr' && m.description_fr) return m.description_fr;
+    return m.description_en;
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-16">
@@ -56,31 +77,105 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-black text-[#0F3D37]">
-                {lang === 'ar' ? 'الملف الأكاديمي للطالب' : 'Student Academic Profile'}
+                {lang === 'ar' ? 'الملف الأكاديمي للطالب' : lang === 'fr' ? 'Profil Scolaire de l\'Élève' : 'Student Academic Profile'}
               </h1>
               {hasCompletedQuestionnaire && (
                 <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                   <CheckCircle className="w-3 h-3" />
-                  {lang === 'ar' ? 'مكتمل' : 'Complete'}
+                  {lang === 'ar' ? 'مكتمل' : lang === 'fr' ? 'Complété' : 'Complete'}
                 </span>
               )}
             </div>
 
             <p className="text-xs sm:text-sm text-[#4B5563]">
               {isFirstYear
-                ? (lang === 'ar' ? 'السنة الأولى ثانوي · جذع مشترك' : 'First Year Secondary · Common Core')
-                : (lang === 'ar' ? `السنة الثالثة ثانوي · شعبة ${formState.branchId}` : `3rd Year Secondary · Branch: ${formState.branchId}`)}
+                ? (lang === 'ar' ? 'السنة الأولى ثانوي · جذع مشترك' : lang === 'fr' ? '1ère Année Secondaire · Tronc Commun' : 'First Year Secondary · Common Core')
+                : (lang === 'ar' ? `السنة الثالثة ثانوي · شعبة ${formState.branchId}` : lang === 'fr' ? `3ème Année Secondaire · Filière ${formState.branchId}` : `3rd Year Secondary · Branch: ${formState.branchId}`)}
             </p>
+
+            {/* Current Auth Badge */}
+            <div className="pt-1 flex items-center gap-2">
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                currentUser
+                  ? currentUser.isAnonymous
+                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                    : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : 'bg-slate-100 text-slate-700'
+              }`}>
+                {currentUser
+                  ? currentUser.isAnonymous
+                    ? (lang === 'fr' ? 'Mode Invité (Anonyme)' : 'Anonymous Guest')
+                    : (currentUser.displayName || currentUser.email)
+                  : (lang === 'fr' ? 'Non authentifié' : 'Not Signed In')}
+              </span>
+              {currentUser && (
+                <span className="text-[10px] text-slate-400 font-mono">
+                  UID: {currentUser.uid.slice(0, 10)}...
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        <button
-          onClick={onEditQuestionnaire}
-          className="px-5 py-2.5 bg-[#1F7A6E] hover:bg-[#0F3D37] text-white text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span>{lang === 'ar' ? 'تعديل بيانات الاستبيان' : 'Edit Questionnaire Answers'}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {onOpenAuth && (
+            <button
+              onClick={() => onOpenAuth(currentUser?.isAnonymous ? 'register' : 'login')}
+              className="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-colors shadow-2xs cursor-pointer text-center"
+            >
+              {currentUser
+                ? (currentUser.isAnonymous
+                    ? (lang === 'fr' ? 'Créer un compte permanent' : 'Upgrade to Permanent Account')
+                    : (lang === 'fr' ? 'Gérer le compte' : 'Account Details'))
+                : (lang === 'fr' ? 'Connexion / Inscription' : 'Sign In / Register')}
+            </button>
+          )}
+
+          {currentUser && onLogout && (
+            <button
+              onClick={onLogout}
+              className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              title={lang === 'fr' ? 'Se déconnecter et réinitialiser la session' : 'Sign Out and Reset'}
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>{lang === 'fr' ? 'Déconnexion' : lang === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}</span>
+            </button>
+          )}
+
+          {onResetData && (
+            <button
+              onClick={() => {
+                const confirmed = window.confirm(
+                  lang === 'fr'
+                    ? 'Voulez-vous réinitialiser toutes les réponses du questionnaire et recommencer à zéro ?'
+                    : lang === 'ar'
+                    ? 'هل تريد مسح جميع إجابات الاستبيان والبدء من جديد؟'
+                    : 'Do you want to reset all questionnaire answers?'
+                );
+                if (confirmed) onResetData();
+              }}
+              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+              title={lang === 'fr' ? 'Effacer les réponses actuelles' : 'Clear questionnaire data'}
+            >
+              <Trash2 className="w-3.5 h-3.5 text-slate-500" />
+              <span>{lang === 'fr' ? 'Réinitialiser' : lang === 'ar' ? 'مسح الإجابات' : 'Reset'}</span>
+            </button>
+          )}
+
+          <button
+            onClick={onEditQuestionnaire}
+            className="px-4 py-2 bg-[#1F7A6E] hover:bg-[#0F3D37] text-white text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>
+              {lang === 'ar'
+                ? 'تعديل الاستبيان'
+                : lang === 'fr'
+                ? 'Modifier le questionnaire'
+                : 'Edit Answers'}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Main Details Grid */}
@@ -89,14 +184,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="bg-white rounded-2xl p-6 shadow-xs border border-slate-200 space-y-4">
           <div className="flex items-center gap-2 text-sm font-bold text-[#0F3D37] border-b border-slate-100 pb-3">
             <GraduationCap className="w-4 h-4 text-[#1F7A6E]" />
-            <span>{lang === 'ar' ? 'الأداء الأكاديمي والدرجات' : 'Academic Scores & Baccalaureate'}</span>
+            <span>
+              {lang === 'ar' ? 'الأداء الأكاديمي والدرجات' : lang === 'fr' ? 'Notes scolaires & Baccalauréat' : 'Academic Scores & Baccalaureate'}
+            </span>
           </div>
 
           <div className="space-y-3">
             {formState.hasTakenBaccalaureate && formState.baccalaureateAverage !== null ? (
               <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex justify-between items-center text-xs">
                 <span className="font-semibold text-emerald-900">
-                  {lang === 'ar' ? 'معدل شهادة البكالوريا المسجل:' : 'Baccalaureate Average:'}
+                  {lang === 'ar' ? 'معدل شهادة البكالوريا المسجل:' : lang === 'fr' ? 'Moyenne au Bac déclarée :' : 'Baccalaureate Average:'}
                 </span>
                 <span className="font-bold text-sm text-emerald-800">
                   {formState.baccalaureateAverage} / 20
@@ -104,14 +201,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
             ) : (
               <div className="text-xs text-slate-500">
-                {lang === 'ar' ? 'امتحان البكالوريا: قيد التحضير أو لم يحدد بعد.' : 'Baccalaureate exam: In preparation / not yet taken.'}
+                {lang === 'ar'
+                  ? 'امتحان البكالوريا: قيد التحضير أو لم يحدد بعد.'
+                  : lang === 'fr'
+                  ? 'Baccalauréat : en cours de préparation ou non renseigné.'
+                  : 'Baccalaureate exam: In preparation / not yet taken.'}
               </div>
             )}
 
             {/* Subject scores count */}
             <div className="text-xs text-[#4B5563] space-y-1.5 pt-1">
               <span className="font-semibold block text-[#0F3D37]">
-                {lang === 'ar' ? `المواد المقيّمة (${scoredCount} مواد):` : `Evaluated Subjects (${scoredCount}):`}
+                {lang === 'ar'
+                  ? `المواد المقيّمة (${scoredCount} مواد):`
+                  : lang === 'fr'
+                  ? `Matières évaluées (${scoredCount}) :`
+                  : `Evaluated Subjects (${scoredCount}):`}
               </span>
               <div className="grid grid-cols-2 gap-2 pt-1 max-h-48 overflow-y-auto">
                 {Object.entries(formState.subjectScores).map(([subjId, score]) => (
@@ -131,13 +236,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="bg-white rounded-2xl p-6 shadow-xs border border-slate-200 space-y-4">
           <div className="flex items-center gap-2 text-sm font-bold text-[#0F3D37] border-b border-slate-100 pb-3">
             <Sparkles className="w-4 h-4 text-[#1F7A6E]" />
-            <span>{lang === 'ar' ? 'التفضيلات والأهداف المستقبلية' : 'Preferences & Future Path'}</span>
+            <span>
+              {lang === 'ar' ? 'التفضيلات والأهداف المستقبلية' : lang === 'fr' ? 'Préférences & Objectifs' : 'Preferences & Future Path'}
+            </span>
           </div>
 
           <div className="space-y-3 text-xs text-[#4B5563]">
             <div>
               <span className="font-bold text-[#0F3D37] block">
-                {lang === 'ar' ? 'المادة المفضلة الأولى:' : 'Top Preferred Subject:'}
+                {lang === 'ar' ? 'المادة المفضلة الأولى:' : lang === 'fr' ? 'Matière favorite N°1 :' : 'Top Preferred Subject:'}
               </span>
               <span className="capitalize text-slate-700">
                 {formState.subjectPreferenceOrder[0]?.replace('_', ' ') || 'None selected'}
@@ -146,12 +253,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
             <div>
               <span className="font-bold text-[#0F3D37] block">
-                {lang === 'ar' ? 'المواد التي تواجه فيها صعوبة:' : 'Difficult Subjects:'}
+                {lang === 'ar' ? 'المواد التي تواجه فيها صعوبة:' : lang === 'fr' ? 'Matières éprouvantes :' : 'Difficult Subjects:'}
               </span>
               <span>
                 {formState.difficultSubjectIds.length > 0
                   ? formState.difficultSubjectIds.map(d => d.replace('_', ' ')).join(', ')
-                  : (lang === 'ar' ? 'لا يوجد صعوبات محددة' : 'None indicated')}
+                  : (lang === 'ar' ? 'لا يوجد صعوبات محددة' : lang === 'fr' ? 'Aucune difficulté majeure' : 'None indicated')}
               </span>
             </div>
 
@@ -159,7 +266,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <>
                 <div className="pt-2 border-t border-slate-100">
                   <span className="font-bold text-[#0F3D37] block">
-                    {lang === 'ar' ? 'وضوح الهدف المهني:' : 'Career Goal Clarity:'}
+                    {lang === 'ar' ? 'وضوح الهدف المهني:' : lang === 'fr' ? 'Clarté du projet d\'orientation :' : 'Career Goal Clarity:'}
                   </span>
                   <span className="capitalize text-slate-700">
                     {formState.goalClarity.replace('_', ' ')}
@@ -168,7 +275,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
                 <div>
                   <span className="font-bold text-[#0F3D37] block">
-                    {lang === 'ar' ? 'الأولويات المهنية (حتى 3):' : 'Key Priorities:'}
+                    {lang === 'ar' ? 'الأولويات المهنية (حتى 3):' : lang === 'fr' ? 'Priorités sélectionnées :' : 'Key Priorities:'}
                   </span>
                   <span>
                     {formState.priorityIds.length > 0
@@ -182,7 +289,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {formState.targetRoleText && (
               <div className="pt-2 border-t border-slate-100">
                 <span className="font-bold text-[#0F3D37] block">
-                  {lang === 'ar' ? 'المهنة المستهدفة المصرح بها:' : 'Declared Target Role:'}
+                  {lang === 'ar' ? 'المهنة المستهدفة المصرح بها:' : lang === 'fr' ? 'Métier visé :' : 'Declared Target Role:'}
                 </span>
                 <span className="text-[#1F7A6E] font-semibold">{formState.targetRoleText}</span>
               </div>
@@ -197,7 +304,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="flex items-center gap-2">
             <Bookmark className="w-5 h-5 text-[#1F7A6E] fill-current" />
             <h2 className="text-lg font-bold text-[#0F3D37]">
-              {lang === 'ar' ? 'التخصصات المحفوظة في قائمتك' : 'Bookmarked Pathways & Majors'} ({bookmarkedMajors.length})
+              {lang === 'ar'
+                ? 'التخصصات المحفوظة في قائمتك'
+                : lang === 'fr'
+                ? 'Filières enregistrées dans vos favoris'
+                : 'Bookmarked Pathways & Majors'} ({bookmarkedMajors.length})
             </h2>
           </div>
 
@@ -205,7 +316,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             onClick={() => onNavigate('explore')}
             className="text-xs font-semibold text-[#1F7A6E] hover:text-[#0F3D37]"
           >
-            {lang === 'ar' ? 'استكشاف المزيد من التخصصات' : 'Browse More Majors'}
+            {lang === 'ar' ? 'استكشاف المزيد من التخصصات' : lang === 'fr' ? 'Explorer d\'autres filières' : 'Browse More Majors'}
           </button>
         </div>
 
@@ -223,14 +334,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       onClick={() => onToggleBookmark(m.major_id)}
                       className="text-red-500 hover:text-red-700 text-xs font-medium"
                     >
-                      {lang === 'ar' ? 'إزالة' : 'Remove'}
+                      {lang === 'ar' ? 'إزالة' : lang === 'fr' ? 'Supprimer' : 'Remove'}
                     </button>
                   </div>
                   <h3 className="font-bold text-sm text-[#0F3D37] mt-1">
-                    {lang === 'ar' ? m.title_ar : m.title_en}
+                    {getMajorTitle(m)}
                   </h3>
                   <p className="text-xs text-[#4B5563] line-clamp-2 mt-1">
-                    {lang === 'ar' ? m.description_ar : m.description_en}
+                    {getMajorDesc(m)}
                   </p>
                 </div>
 
@@ -238,7 +349,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   onClick={() => onSelectMajor(m.major_id)}
                   className="w-full py-1.5 px-3 bg-white hover:bg-[#1F7A6E] text-[#0F3D37] hover:text-white rounded-lg text-xs font-semibold border border-slate-200 transition-colors flex items-center justify-center gap-1"
                 >
-                  <span>{lang === 'ar' ? 'عرض التفاصيل' : 'View Details'}</span>
+                  <span>{lang === 'ar' ? 'عرض التفاصيل' : lang === 'fr' ? 'Consulter la fiche' : 'View Details'}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -246,7 +357,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         ) : (
           <div className="py-8 text-center text-xs text-slate-500 space-y-2">
-            <p>{lang === 'ar' ? 'لم تقم بحفظ أي تخصص بعد. يمكنك حفظ التخصصات المفضلة من صفحة النتائج أو دليل التخصصات.' : 'No bookmarked majors yet. You can save any major from Results or Explore Majors.'}</p>
+            <p>
+              {lang === 'ar'
+                ? 'لم تقم بحفظ أي تخصص بعد. يمكنك حفظ التخصصات المفضلة من صفحة النتائج أو دليل التخصصات.'
+                : lang === 'fr'
+                ? 'Aucune filière enregistrée pour le moment. Vous pouvez ajouter des favoris depuis les recommandations ou le guide.'
+                : 'No bookmarked majors yet. You can save any major from Results or Explore Majors.'}
+            </p>
           </div>
         )}
       </div>

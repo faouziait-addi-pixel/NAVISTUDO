@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Represents an authenticated or anonymous user profile in NaviStudo.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Authentication UID of the student."
+        },
+        "isAnonymous": {
+          "type": "boolean",
+          "description": "True if the user signed in anonymously without email credentials."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of registered user."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name or student nickname."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of user creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update."
+        }
+      },
+      "required": ["userId", "isAnonymous", "createdAt"]
+    },
+    "QuestionnaireSubmission": {
+      "title": "QuestionnaireSubmission",
+      "description": "Saved questionnaire answer payload and metadata for educational recommendations.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this submission."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The UID of the student owner."
+        },
+        "stageId": {
+          "type": "string",
+          "description": "Academic stage (first_year_secondary or third_year_secondary)."
+        },
+        "branchId": {
+          "type": "string",
+          "description": "Selected high school branch or study group."
+        },
+        "payloadJson": {
+          "type": "string",
+          "description": "Serialized JSON matching NaviStudo MVP v1.0 recommendation request envelope."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of submission."
+        }
+      },
+      "required": ["id", "userId", "stageId", "payloadJson", "createdAt"]
+    },
+    "SavedMajor": {
+      "title": "SavedMajor",
+      "description": "Bookmarked university major or high school branch.",
+      "type": "object",
+      "properties": {
+        "majorId": {
+          "type": "string",
+          "description": "Canonical ID of the saved major."
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of the student who bookmarked this major."
+        },
+        "savedAt": {
+          "type": "string",
+          "description": "ISO timestamp of bookmark action."
+        }
+      },
+      "required": ["majorId", "userId", "savedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Stores user profile and account status."
+    },
+    "/users/{userId}/submissions/{submissionId}": {
+      "schema": "QuestionnaireSubmission",
+      "description": "User questionnaire submissions and evaluation payloads."
+    },
+    "/users/{userId}/bookmarks/{majorId}": {
+      "schema": "SavedMajor",
+      "description": "Bookmarked university orientation choices."
+    }
+  }
+}

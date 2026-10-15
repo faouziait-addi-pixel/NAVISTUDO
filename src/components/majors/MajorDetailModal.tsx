@@ -1,17 +1,13 @@
 import React from 'react';
 import { MajorDatabaseEntry } from '../../data/majorsDatabase';
+import { Language } from '../../types/contract';
 import {
   X,
   Bookmark,
-  CheckCircle,
-  Clock,
   Building,
   GraduationCap,
   Briefcase,
   BookOpen,
-  ArrowRight,
-  TrendingUp,
-  ShieldCheck,
   Award
 } from 'lucide-react';
 
@@ -22,7 +18,7 @@ interface MajorDetailModalProps {
   isBookmarked: boolean;
   onToggleBookmark: (majorId: string) => void;
   onSelectAlternativeMajor: (majorId: string) => void;
-  lang: 'en' | 'ar';
+  lang: Language;
 }
 
 export const MajorDetailModal: React.FC<MajorDetailModalProps> = ({
@@ -35,6 +31,24 @@ export const MajorDetailModal: React.FC<MajorDetailModalProps> = ({
   lang
 }) => {
   if (!isOpen || !major) return null;
+
+  const getTitle = () => {
+    if (lang === 'ar') return major.title_ar;
+    if (lang === 'fr' && major.title_fr) return major.title_fr;
+    return major.title_en;
+  };
+
+  const getExplanation = () => {
+    if (lang === 'ar') return major.explanation_ar;
+    if (lang === 'fr' && major.explanation_fr) return major.explanation_fr;
+    return major.explanation_en;
+  };
+
+  const getDescription = () => {
+    if (lang === 'ar') return major.description_ar;
+    if (lang === 'fr' && major.description_fr) return major.description_fr;
+    return major.description_en;
+  };
 
   return (
     <div
@@ -51,17 +65,25 @@ export const MajorDetailModal: React.FC<MajorDetailModalProps> = ({
               <div className="flex items-center gap-2 text-xs font-bold text-[#A7D0B8] uppercase tracking-wider">
                 <span className="capitalize">{major.category}</span>
                 <span>·</span>
-                <span>{major.study_duration_years} {lang === 'ar' ? 'سنوات تكوين' : 'Years Study Duration'}</span>
+                <span>
+                  {major.study_duration_years} {lang === 'fr' ? 'ans de formation' : lang === 'ar' ? 'سنوات تكوين' : 'Years Study Duration'}
+                </span>
                 {major.min_indicative_average && (
                   <>
                     <span>·</span>
-                    <span>{lang === 'ar' ? `معدل استرشادي: ~${major.min_indicative_average}` : `Indicative Bac Avg: ~${major.min_indicative_average}`}</span>
+                    <span>
+                      {lang === 'ar'
+                        ? `معدل استرشادي: ~${major.min_indicative_average}`
+                        : lang === 'fr'
+                        ? `Moyenne indicative Bac : ~${major.min_indicative_average}`
+                        : `Indicative Bac Avg: ~${major.min_indicative_average}`}
+                    </span>
                   </>
                 )}
               </div>
 
               <h2 id="major-modal-title" className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                {lang === 'ar' ? major.title_ar : major.title_en}
+                {getTitle()}
               </h2>
             </div>
 
@@ -73,7 +95,7 @@ export const MajorDetailModal: React.FC<MajorDetailModalProps> = ({
                     ? 'bg-[#A7D0B8] text-[#0F3D37] border-[#A7D0B8]'
                     : 'bg-white/10 text-white hover:bg-white/20 border-white/20'
                 }`}
-                title={isBookmarked ? 'Remove bookmark' : 'Bookmark major'}
+                title={isBookmarked ? 'Retirer' : 'Enregistrer'}
               >
                 <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
               </button>
@@ -81,7 +103,7 @@ export const MajorDetailModal: React.FC<MajorDetailModalProps> = ({
               <button
                 onClick={onClose}
                 className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                aria-label="Close dialog"
+                aria-label="Fermer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -96,24 +118,30 @@ export const MajorDetailModal: React.FC<MajorDetailModalProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-bold text-[#1F7A6E]">
                 <Award className="w-4 h-4" />
-                <span>{lang === 'ar' ? 'تحليل التوافق مع ملفك الدراسي' : 'Profile Match Analysis'}</span>
+                <span>
+                  {lang === 'ar'
+                    ? 'تحليل التوافق مع ملفك الدراسي'
+                    : lang === 'fr'
+                    ? 'Analyse d\'adéquation avec votre profil scolaire'
+                    : 'Profile Match Analysis'}
+                </span>
               </div>
               <span className="text-xs font-black text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
                 {major.match_score}% Match ({major.match_level.replace('_', ' ')})
               </span>
             </div>
             <p className="text-xs sm:text-sm text-[#4B5563] leading-relaxed">
-              {lang === 'ar' ? major.explanation_ar : major.explanation_en}
+              {getExplanation()}
             </p>
           </div>
 
           {/* Academic Overview Description */}
           <div className="space-y-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-[#1F7A6E]">
-              {lang === 'ar' ? 'نبذة عن التخصص الجامعي' : 'Academic Field Overview'}
+              {lang === 'ar' ? 'نبذة عن التخصص الجامعي' : lang === 'fr' ? 'Présentation de la filière' : 'Academic Field Overview'}
             </h3>
             <p className="text-sm text-[#4B5563] leading-relaxed">
-              {lang === 'ar' ? major.description_ar : major.description_en}
+              {getDescription()}
             </p>
           </div>
 
@@ -122,7 +150,9 @@ export const MajorDetailModal: React.FC<MajorDetailModalProps> = ({
             <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-2">
               <div className="flex items-center gap-2 text-xs font-bold text-[#0F3D37]">
                 <BookOpen className="w-4 h-4 text-[#1F7A6E]" />
-                <span>{lang === 'ar' ? 'المواد الثانوية المفتاحية' : 'Key High School Subjects'}</span>
+                <span>
+                  {lang === 'ar' ? 'المواد الثانوية المفتاحية' : lang === 'fr' ? 'Matières clés du secondaire' : 'Key High School Subjects'}
+                </span>
               </div>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {major.key_subjects.map(subj => (
@@ -139,7 +169,9 @@ export const MajorDetailModal: React.FC<MajorDetailModalProps> = ({
             <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-2">
               <div className="flex items-center gap-2 text-xs font-bold text-[#0F3D37]">
                 <GraduationCap className="w-4 h-4 text-[#1F7A6E]" />
-                <span>{lang === 'ar' ? 'الشعب الثانوية المؤهلة' : 'Eligible High School Branches'}</span>
+                <span>
+                  {lang === 'ar' ? 'الشعب الثانوية المؤهلة' : lang === 'fr' ? 'Séries / Filières du Bac admises' : 'Eligible High School Branches'}
+                </span>
               </div>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {major.prerequisite_branches.map(branch => (
@@ -158,7 +190,13 @@ export const MajorDetailModal: React.FC<MajorDetailModalProps> = ({
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs font-bold text-[#1F7A6E] uppercase tracking-wider">
               <Building className="w-4 h-4" />
-              <span>{lang === 'ar' ? 'مؤسسات التعليم العالي الحاضنة' : 'Higher Education Institutions'}</span>
+              <span>
+                {lang === 'ar'
+                  ? 'مؤسسات التعليم العالي الحاضنة'
+                  : lang === 'fr'
+                  ? 'Établissements d\'enseignement supérieur'
+                  : 'Higher Education Institutions'}
+              </span>
             </div>
             <ul className="space-y-1.5 text-xs text-[#4B5563]">
               {major.institution_types.map((inst, i) => (
@@ -173,7 +211,11 @@ export const MajorDetailModal: React.FC<MajorDetailModalProps> = ({
           {/* Sample Curriculum Modules */}
           <div className="space-y-2">
             <h3 className="text-xs font-bold text-[#1F7A6E] uppercase tracking-wider">
-              {lang === 'ar' ? 'نماذج من المقاييس والمواد المدرسة بالجامعة' : 'Sample University Curriculum Modules'}
+              {lang === 'ar'
+                ? 'نماذج من المقاييس والمواد المدرسة بالجامعة'
+                : lang === 'fr'
+                ? 'Exemples d\'unités d\'enseignement et modules'
+                : 'Sample University Curriculum Modules'}
             </h3>
             <div className="flex flex-wrap gap-2">
               {major.sample_curriculum_modules.map((mod, i) => (
@@ -191,7 +233,9 @@ export const MajorDetailModal: React.FC<MajorDetailModalProps> = ({
           <div className="p-4 rounded-xl bg-teal-50/60 border border-teal-200 space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold text-[#1F7A6E]">
               <Briefcase className="w-4 h-4" />
-              <span>{lang === 'ar' ? 'الآفاق المهنية وسوق العمل' : 'Career Paths & Labor Market Outlook'}</span>
+              <span>
+                {lang === 'ar' ? 'الآفاق المهنية وسوق العمل' : lang === 'fr' ? 'Perspectives professionnelles & Marché' : 'Career Paths & Labor Market Outlook'}
+              </span>
             </div>
             <p className="text-xs text-[#4B5563] leading-relaxed">
               {major.employment_outlook}
@@ -216,14 +260,18 @@ export const MajorDetailModal: React.FC<MajorDetailModalProps> = ({
             className="text-xs font-bold text-[#1F7A6E] hover:text-[#0F3D37] flex items-center gap-1.5"
           >
             <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-current' : ''}`} />
-            <span>{isBookmarked ? (lang === 'ar' ? 'إلغاء الحفظ' : 'Remove Bookmark') : (lang === 'ar' ? 'حفظ في ملفي' : 'Bookmark to Profile')}</span>
+            <span>
+              {isBookmarked
+                ? (lang === 'ar' ? 'إلغاء الحفظ' : lang === 'fr' ? 'Retirer des favoris' : 'Remove Bookmark')
+                : (lang === 'ar' ? 'حفظ في ملفي' : lang === 'fr' ? 'Ajouter à mes favoris' : 'Bookmark to Profile')}
+            </span>
           </button>
 
           <button
             onClick={onClose}
             className="px-5 py-2 bg-[#1F7A6E] hover:bg-[#0F3D37] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
           >
-            {lang === 'ar' ? 'إغلاق' : 'Close Details'}
+            {lang === 'ar' ? 'إغلاق' : lang === 'fr' ? 'Fermer' : 'Close Details'}
           </button>
         </div>
       </div>
