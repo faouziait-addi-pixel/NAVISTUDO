@@ -30,6 +30,7 @@ import {
   fetchUserBookmarks,
   logoutUser
 } from './services/auth';
+import { getSavedAnalysis } from './services/api';
 import { CheckCircle2, X } from 'lucide-react';
 
 export default function App() {
@@ -80,9 +81,9 @@ export default function App() {
   const [bookmarkedMajorIds, setBookmarkedMajorIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('navistudo_bookmarks');
-      return saved ? JSON.parse(saved) : ['major_computer_science_ai'];
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return ['major_computer_science_ai'];
+      return [];
     }
   });
 
@@ -95,7 +96,7 @@ export default function App() {
   /**
    * Complete clean logout: clears user credentials, wipes questionnaire answers,
    * resets calculated recommendations and bookmarks, removes local storage keys,
-   * and navigates cleanly to the welcome page (Page d'Accueil).
+   * resets profile view state, and navigates cleanly to the welcome page (Page d'Accueil).
    */
   const handleLogout = async () => {
     try {
@@ -107,12 +108,15 @@ export default function App() {
     setCurrentUser(null);
     setFormState(INITIAL_FORM_STATE);
     setRecommendations([]);
-    setBookmarkedMajorIds(['major_computer_science_ai']);
+    setBookmarkedMajorIds([]);
+    setSelectedMajorId(null);
+    setIsLocalFallback(false);
 
     try {
       localStorage.removeItem('navistudo_form_state');
       localStorage.removeItem('navistudo_recommendations');
       localStorage.removeItem('navistudo_bookmarks');
+      localStorage.removeItem('navistudo_local_auth_user');
     } catch (e) {
       console.warn('Could not clear localStorage on logout', e);
     }
@@ -122,15 +126,15 @@ export default function App() {
 
     setLogoutNotice(
       lang === 'ar'
-        ? 'تم تسجيل الخروج بنجاح. تم مسح جميع إجابات الاستبيان والتوصيات لحماية خصوصيتك.'
+        ? 'تم تسجيل الخروج بنجاح. تم مسح جميع إجابات الاستبيان والتوصيات وبيانات الملف الشخصي لحماية خصوصيتك.'
         : lang === 'fr'
-        ? 'Déconnexion effectuée avec succès. Vos réponses au questionnaire ont été effacées pour protéger votre vie privée.'
-        : 'Signed out successfully. Your questionnaire answers and recommendations have been cleared.'
+        ? 'Déconnexion effectuée avec succès. Votre profil, vos réponses au questionnaire et vos recommandations ont été intégralement réinitialisés.'
+        : 'Signed out successfully. Your profile, answers, and recommendations have been completely reset.'
     );
 
     setTimeout(() => {
       setLogoutNotice(null);
-    }, 6000);
+    }, 5000);
   };
 
   /**
@@ -139,9 +143,13 @@ export default function App() {
   const handleResetQuestionnaire = () => {
     setFormState(INITIAL_FORM_STATE);
     setRecommendations([]);
+    setBookmarkedMajorIds([]);
+    setSelectedMajorId(null);
+    setIsLocalFallback(false);
     try {
       localStorage.removeItem('navistudo_form_state');
       localStorage.removeItem('navistudo_recommendations');
+      localStorage.removeItem('navistudo_bookmarks');
     } catch (e) {
       console.warn('Could not clear localStorage on reset', e);
     }
@@ -157,11 +165,14 @@ export default function App() {
         // Auth state flipped from logged in to logged out!
         setFormState(INITIAL_FORM_STATE);
         setRecommendations([]);
-        setBookmarkedMajorIds(['major_computer_science_ai']);
+        setBookmarkedMajorIds([]);
+        setSelectedMajorId(null);
+        setIsLocalFallback(false);
         try {
           localStorage.removeItem('navistudo_form_state');
           localStorage.removeItem('navistudo_recommendations');
           localStorage.removeItem('navistudo_bookmarks');
+          localStorage.removeItem('navistudo_local_auth_user');
         } catch (e) {}
         setCurrentScreen('welcome');
       }
@@ -259,6 +270,24 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  /**
+   * Loads a previously saved analysis from the backend via GET /api/v1/recommendations/<id>
+   */
+  const handleLoadSavedAnalysis = async (analysisId: string) => {
+    try {
+      const data = await getSavedAnalysis(analysisId);
+      setRecommendations(data.recommendations);
+      setIsLocalFallback(false);
+      setCurrentScreen('results');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erreur lors du chargement de l\'analyse.';
+      setLogoutNotice(msg);
+      setTimeout(() => setLogoutNotice(null), 6000);
+      throw err;
+    }
+  };
+
   // Completion percentage
   const calculateCompletion = () => {
     if (recommendations.length > 0) return 100;
@@ -295,10 +324,10 @@ export default function App() {
       />
 
       {/* Main View Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 space-y-4">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 space-y-4 print:max-w-none print:p-0 print:m-0 print:pt-0 print:space-y-0">
         {/* Post-Logout Privacy Notice Banner */}
         {logoutNotice && (
-          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 print:hidden">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
               <p className="text-xs sm:text-sm font-semibold">{logoutNotice}</p>
@@ -355,6 +384,7 @@ export default function App() {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onResetState={handleResetQuestionnaire}
+            onOpenAuth={(tab) => handleOpenAuth(tab)}
             lang={lang}
           />
         )}
@@ -375,6 +405,8 @@ export default function App() {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             lang={lang}
+            formState={formState}
+            currentUser={currentUser}
           />
         )}
 
@@ -407,6 +439,7 @@ export default function App() {
             onOpenAuth={(tab) => handleOpenAuth(tab)}
             onLogout={handleLogout}
             onResetData={handleResetQuestionnaire}
+            onLoadSavedAnalysis={handleLoadSavedAnalysis}
           />
         )}
       </main>

@@ -75,20 +75,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       const user = await signInAsGuest();
       if (onUserChange) onUserChange(user);
-      setSuccessMsg(
-        lang === 'fr'
-          ? 'Connexion anonyme réussie ! Votre session invité est active.'
-          : lang === 'ar'
-          ? 'تم تسجيل الدخول المجهول بنجاح! جلستك كضيف جاهزة.'
-          : 'Anonymous guest access active! Your session is ready.'
-      );
-      setTimeout(() => {
-        onClose();
-      }, 1000);
+      onClose();
     } catch (err: any) {
-      console.error(err);
+      console.warn('[NaviStudo Auth]', err?.message || err);
       setError(
-        err.message ||
+        err?.message ||
         (lang === 'fr' ? 'Échec de la connexion anonyme.' : 'Anonymous sign-in failed.')
       );
     } finally {
@@ -124,23 +115,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
       }, 1100);
     } catch (err: any) {
-      console.error(err);
-      let msg = err.message || 'Error';
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+      console.warn('[NaviStudo Auth]', err?.message || err);
+      let msg = err?.message || 'Error';
+      if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {
         msg =
           lang === 'fr'
             ? 'Identifiants invalides ou mot de passe incorrect.'
             : lang === 'ar'
             ? 'بيانات الاعتماد غير صالحة أو كلمة المرور خاطئة.'
             : 'Invalid email or password.';
-      } else if (err.code === 'auth/user-not-found') {
+      } else if (err?.code === 'auth/user-not-found') {
         msg =
           lang === 'fr'
             ? 'Aucun compte trouvé avec cet email. Vous pouvez en créer un.'
             : lang === 'ar'
             ? 'لم يتم العثور على حساب بهذا البريد. يمكنك إنشاء حساب جديد.'
             : 'No account found with this email.';
-      } else if (err.code === 'auth/invalid-email') {
+      } else if (err?.code === 'auth/invalid-email') {
         msg =
           lang === 'fr'
             ? 'Format d\'adresse email invalide.'
@@ -206,23 +197,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
       }, 1200);
     } catch (err: any) {
-      console.error(err);
-      let msg = err.message || 'Registration error';
-      if (err.code === 'auth/email-already-in-use') {
+      console.warn('[NaviStudo Auth]', err?.message || err);
+      let msg = err?.message || 'Registration error';
+      if (err?.code === 'auth/email-already-in-use') {
         msg =
           lang === 'fr'
             ? 'Cette adresse email est déjà utilisée. Basculez sur l\'onglet Connexion.'
             : lang === 'ar'
             ? 'هذا البريد الإلكتروني مسجل بالفعل. انتقل إلى تبويب تسجيل الدخول.'
             : 'Email is already registered. Please sign in instead.';
-      } else if (err.code === 'auth/weak-password') {
+      } else if (err?.code === 'auth/weak-password') {
         msg =
           lang === 'fr'
             ? 'Le mot de passe est trop faible. Utilisez au moins 6 caractères.'
             : lang === 'ar'
             ? 'كلمة المرور ضعيفة. استخدم 6 أحرف على الأقل.'
             : 'Password is too weak.';
-      } else if (err.code === 'auth/credential-already-in-use') {
+      } else if (err?.code === 'auth/credential-already-in-use') {
         msg =
           lang === 'fr'
             ? 'Ce compte email existe déjà. Veuillez vous connecter.'
@@ -253,11 +244,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
       }, 1000);
     } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/popup-closed-by-user') {
+      console.warn('[NaviStudo Auth]', err?.message || err);
+      if (err?.code === 'auth/popup-closed-by-user') {
         setError(lang === 'fr' ? 'Connexion Google annulée.' : 'Google sign-in popup was closed.');
       } else {
-        setError(err.message || 'Google sign-in failed');
+        setError(err?.message || 'Google sign-in failed');
       }
     } finally {
       setLoading(false);

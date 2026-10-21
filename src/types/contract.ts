@@ -140,4 +140,6 @@ export interface RecommendationResponseEnvelope {
     suggested_focus: string;
     total_evaluated: number;
   };
+  analysis_id?: string;
+  created_at?: string;
 }

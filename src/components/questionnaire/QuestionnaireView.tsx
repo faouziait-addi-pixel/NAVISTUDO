@@ -17,6 +17,8 @@ import {
 } from '../../types/taxonomy';
 import { QuestionnaireFormState, buildRecommendationPayload } from '../../services/payloadBuilder';
 import { submitQuestionnaire } from '../../services/api';
+import { getCurrentUserIdToken, signInAsGuest } from '../../services/auth';
+import { generateRecommendations } from '../../services/recommendationEngine';
 import { RecommendationResponseEnvelope, Language } from '../../types/contract';
 import {
   ChevronLeft,
@@ -25,7 +27,8 @@ import {
   AlertCircle,
   ArrowUp,
   ArrowDown,
-  Sparkles
+  Sparkles,
+  LogIn
 } from 'lucide-react';
 
 interface QuestionnaireViewProps {
@@ -34,6 +37,7 @@ interface QuestionnaireViewProps {
   onSubmitSuccess: (data: RecommendationResponseEnvelope, isLocalFallback: boolean) => void;
   onCancel: () => void;
   onResetState?: () => void;
+  onOpenAuth?: (tab?: 'anonymous' | 'login' | 'register') => void;
   lang: Language;
 }
 
@@ -43,6 +47,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
   onSubmitSuccess,
   onCancel,
   onResetState,
+  onOpenAuth,
   lang
 }) => {
   const [formState, setFormState] = useState<QuestionnaireFormState>(initialState);
@@ -222,6 +227,7 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return; // Prevent duplicate submissions
     if (!validateStep(currentStep)) return;
 
     setIsSubmitting(true);
@@ -230,11 +236,42 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
     try {
       // Build spec-compliant request envelope
       const payload = buildRecommendationPayload(formState);
-      const result = await submitQuestionnaire(payload);
-      onSubmitSuccess(result.data, result.isLocalFallback);
+
+      // Verify or acquire Firebase Auth token
+      let token = await getCurrentUserIdToken();
+      if (!token) {
+        // Attempt anonymous guest authentication
+        try {
+          await signInAsGuest();
+          token = await getCurrentUserIdToken();
+        } catch (guestErr) {
+          console.warn('Guest sign-in attempt could not complete:', guestErr);
+        }
+      }
+
+      if (!token) {
+        throw new Error(
+          lang === 'ar'
+            ? 'يتطلب إرسال البيانات وإجراء التحليل تسجيل الدخول. يرجى تسجيل الدخول أو إنشاء حساب للمتابعة.'
+            : lang === 'fr'
+            ? 'Une session authentifiée est requise pour générer vos recommandations. Veuillez vous connecter ou créer un compte.'
+            : 'Authentication required: A valid sign-in session is needed to generate recommendations.'
+        );
+      }
+
+      try {
+        const result = await submitQuestionnaire(payload, token);
+        onSubmitSuccess(result.data, result.isLocalFallback);
+      } catch (backendErr: unknown) {
+        console.warn('[NaviStudo API] Remote backend unavailable or token restricted, evaluating with curriculum engine:', backendErr);
+        const fallbackData = generateRecommendations(payload);
+        onSubmitSuccess(fallbackData, true);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error generating recommendations.';
       setValidationError(msg);
+      // Preserve student answers on failure
+      onSaveState(formState);
     } finally {
       setIsSubmitting(false);
     }
@@ -368,9 +405,21 @@ export const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
 
       {/* Inline Validation Alert if present */}
       {validationError && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-sm text-red-700 animate-in fade-in duration-150">
-          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-500" />
-          <div className="flex-1 font-medium">{validationError}</div>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start justify-between gap-3 text-sm text-red-700 animate-in fade-in duration-150">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-500" />
+            <div className="flex-1 font-medium">{validationError}</div>
+          </div>
+          {onOpenAuth && (validationError.includes('AUTH') || validationError.includes('Authentification') || validationError.includes('تسجيل الدخول')) && (
+            <button
+              type="button"
+              onClick={() => onOpenAuth('login')}
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>{lang === 'ar' ? 'تسجيل الدخول' : lang === 'fr' ? 'Se connecter' : 'Sign In'}</span>
+            </button>
+          )}
         </div>
       )}
 

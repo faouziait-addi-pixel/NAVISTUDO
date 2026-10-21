@@ -107,7 +107,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#0F3D37] text-white shadow-md border-b border-[#1F7A6E]/40">
+    <header className="sticky top-0 z-40 bg-[#0F3D37] text-white shadow-md border-b border-[#1F7A6E]/40 print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo brand */}

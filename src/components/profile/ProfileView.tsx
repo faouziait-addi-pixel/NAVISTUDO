@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { QuestionnaireFormState } from '../../services/payloadBuilder';
 import { MAJORS_DATABASE } from '../../data/majorsDatabase';
 import { Language } from '../../types/contract';
@@ -11,7 +11,11 @@ import {
   Sparkles,
   ChevronRight,
   LogOut,
-  Trash2
+  Trash2,
+  FileText,
+  Search,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { ScreenType } from '../layout/Navbar';
 import { AppUser } from '../../services/auth';
@@ -29,6 +33,7 @@ interface ProfileViewProps {
   onOpenAuth?: (tab?: 'anonymous' | 'login' | 'register') => void;
   onLogout?: () => void;
   onResetData?: () => void;
+  onLoadSavedAnalysis?: (analysisId: string) => Promise<void>;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
@@ -43,8 +48,29 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   currentUser,
   onOpenAuth,
   onLogout,
-  onResetData
+  onResetData,
+  onLoadSavedAnalysis
 }) => {
+  const [analysisIdInput, setAnalysisIdInput] = useState('');
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const handleFetchSavedAnalysis = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!analysisIdInput.trim() || !onLoadSavedAnalysis) return;
+    setIsLoadingAnalysis(true);
+    setAnalysisError(null);
+    try {
+      await onLoadSavedAnalysis(analysisIdInput.trim());
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Impossible de récupérer cette analyse.';
+      setAnalysisError(msg);
+    } finally {
+      setIsLoadingAnalysis(false);
+    }
+  };
+
   const isFirstYear = formState.stageId === 'first_year_secondary';
 
   // Bookmarked majors list
@@ -143,23 +169,40 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           )}
 
           {onResetData && (
-            <button
-              onClick={() => {
-                const confirmed = window.confirm(
-                  lang === 'fr'
-                    ? 'Voulez-vous réinitialiser toutes les réponses du questionnaire et recommencer à zéro ?'
-                    : lang === 'ar'
-                    ? 'هل تريد مسح جميع إجابات الاستبيان والبدء من جديد؟'
-                    : 'Do you want to reset all questionnaire answers?'
-                );
-                if (confirmed) onResetData();
-              }}
-              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
-              title={lang === 'fr' ? 'Effacer les réponses actuelles' : 'Clear questionnaire data'}
-            >
-              <Trash2 className="w-3.5 h-3.5 text-slate-500" />
-              <span>{lang === 'fr' ? 'Réinitialiser' : lang === 'ar' ? 'مسح الإجابات' : 'Reset'}</span>
-            </button>
+            showResetConfirm ? (
+              <div className="flex items-center gap-1.5 p-1 bg-rose-50 border border-rose-300 rounded-xl text-xs">
+                <span className="text-[11px] font-bold text-rose-800 px-1">
+                  {lang === 'ar' ? 'مسح كل شيء؟' : lang === 'fr' ? 'Tout effacer ?' : 'Reset all?'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onResetData();
+                    setShowResetConfirm(false);
+                  }}
+                  className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-[11px] cursor-pointer"
+                >
+                  {lang === 'ar' ? 'نعم' : lang === 'fr' ? 'Oui' : 'Yes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirm(false)}
+                  className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-medium rounded-lg text-[11px] border border-slate-200 cursor-pointer"
+                >
+                  {lang === 'ar' ? 'إلغاء' : lang === 'fr' ? 'Non' : 'No'}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(true)}
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+                title={lang === 'fr' ? 'Effacer les réponses actuelles' : 'Clear questionnaire data'}
+              >
+                <Trash2 className="w-3.5 h-3.5 text-slate-500" />
+                <span>{lang === 'fr' ? 'Réinitialiser' : lang === 'ar' ? 'مسح الإجابات' : 'Reset'}</span>
+              </button>
+            )
           )}
 
           <button
@@ -297,6 +340,65 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Saved Analysis Retrieval (GET /api/v1/recommendations/<id>) */}
+      {onLoadSavedAnalysis && (
+        <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-xs border border-slate-200 space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <FileText className="w-5 h-5 text-[#1F7A6E]" />
+            <div>
+              <h2 className="text-lg font-bold text-[#0F3D37]">
+                {lang === 'ar' ? 'استرجاع تحليل سابق' : lang === 'fr' ? 'Consulter une analyse sauvegardée' : 'Retrieve Saved Analysis'}
+              </h2>
+              <p className="text-xs text-slate-500">
+                {lang === 'ar'
+                  ? 'أدخل معرف التحليل (Analysis ID) لاسترجاع تقرير التوجيه المحفوظ على الخادم.'
+                  : lang === 'fr'
+                  ? 'Saisissez l\'identifiant de l\'analyse (Analysis ID) pour charger un bilan généré précédemment.'
+                  : 'Enter an Analysis ID to retrieve a previously saved orientation report from the backend.'}
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleFetchSavedAnalysis} className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={analysisIdInput}
+                onChange={(e) => setAnalysisIdInput(e.target.value)}
+                placeholder={lang === 'ar' ? 'مثال: ana_123456789' : lang === 'fr' ? 'Ex: ana_123456789 ou identifiant d\'analyse' : 'Ex: ana_123456789 or analysis ID'}
+                className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-slate-300 focus:border-[#1F7A6E] focus:ring-1 focus:ring-[#1F7A6E] text-xs font-mono text-slate-800 outline-none"
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+            </div>
+
+            <button
+              type="submit"
+              disabled={!analysisIdInput.trim() || isLoadingAnalysis}
+              className="px-5 py-2.5 bg-[#1F7A6E] hover:bg-[#0F3D37] text-white rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+            >
+              {isLoadingAnalysis ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{lang === 'ar' ? 'جاري التحميل...' : lang === 'fr' ? 'Chargement...' : 'Loading...'}</span>
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4" />
+                  <span>{lang === 'ar' ? 'استرجاع التحليل' : lang === 'fr' ? 'Charger le rapport' : 'Load Report'}</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {analysisError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+              <span>{analysisError}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bookmarked / Saved Majors Section */}
       <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-xs border border-slate-200 space-y-4">

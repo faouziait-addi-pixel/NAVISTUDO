@@ -31,3 +31,65 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #1F7A6E;
 }
+
+/* Default screen visibility for print-only elements */
+.navistudo-print-only {
+  display: none !important;
+}
+
+/* Print Standardizations for PDF Export and Official Reports */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 14mm 14mm 14mm;
+  }
+
+  /* Unconstrain body, root and containers so browsers paginate multi-page documents without cutting */
+  html,
+  body,
+  #root,
+  #root > div,
+  main {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Force screen navigation, banners, modals, and toolbars to be hidden in print */
+  .print-hidden,
+  .no-print,
+  header,
+  footer,
+  nav,
+  aside,
+  .fixed:not(.printable-target) {
+    display: none !important;
+  }
+
+  /* Force formal report header, metadata, and footer to be visible */
+  .navistudo-print-only {
+    display: block !important;
+  }
+
+  .navistudo-print-flex {
+    display: flex !important;
+  }
+
+  /* Prevent recommendation cards and sections from breaking across pages */
+  .print-break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Maintain exact colors for badges and metrics */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

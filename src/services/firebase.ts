@@ -1,15 +1,26 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Use environment variables if provided, otherwise fall back to local config
+export const effectiveFirebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfig.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfig.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfig.projectId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfig.appId,
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfig.firestoreDatabaseId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfig.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfig.messagingSenderId,
+};
+
+const app = getApps().length === 0 ? initializeApp(effectiveFirebaseConfig) : getApp();
 
 export const auth = getAuth(app);
 
 // Use specified custom database ID if present, otherwise default
-export const db = firebaseConfig.firestoreDatabaseId
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+export const db = effectiveFirebaseConfig.firestoreDatabaseId
+  ? getFirestore(app, effectiveFirebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
 
 // Connection check for Firebase Firestore
