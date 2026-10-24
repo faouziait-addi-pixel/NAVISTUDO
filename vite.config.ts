@@ -108,8 +108,9 @@ function devApiPlugin(): Plugin {
   };
 }
 
-export default defineConfig(() => {
+export default defineConfig(({ command }) => {
   return {
+    base: command === 'build' ? '/NAVISTUDO/' : '/',
     plugins: [react(), tailwindcss(), devApiPlugin()],
     resolve: {
       alias: {
