@@ -97,7 +97,7 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
                 {lang === 'ar'
                   ? 'المنصة الوطنية للتوجيه المدرسي والجامعي في الجزائر'
                   : lang === 'fr'
-                  ? 'Portail National d\'Orientation Scolaire & Supérieure · Algérie'
+                  ? 'Portail d\'Orientation Scolaire & Supérieure · Algérie'
                   : 'Algerian Secondary & Higher Education Guidance Portal'}
               </span>
             </div>
