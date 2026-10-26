@@ -1,6 +1,6 @@
 # NaviStudo 🎓
 
-NaviStudo est une application web d’orientation scolaire et universitaire destinée aux élèves du secondaire. Elle aide chaque utilisateur à identifier des parcours éducatifs, des filières et des spécialités universitaires adaptés à ses intérêts, ses résultats et ses priorités.
+NaviStudo est une application web d’orientation scolaire et universitaire destinée aux élèves du secondaire. Elle aide chaque utilisateur à identifier des parcours éducatifs, des filières et des spécialités adaptées à son profil.
 
 L’application propose un parcours guidé, des recommandations personnalisées et une exploration des spécialités, avec une interface disponible en français, anglais et arabe.
 
@@ -127,6 +127,45 @@ http://localhost:3000
 4. NaviStudo génère une liste de recommandations personnalisées.
 5. L’utilisateur peut consulter le détail des spécialités, les ajouter à ses favoris et explorer d’autres parcours.
 6. Un utilisateur connecté peut sauvegarder son analyse et retrouver ses données depuis son profil.
+
+## Backend Integration
+
+When the backend is available and correctly configured, the frontend can communicate with it through HTTP API requests.
+
+The recommendation endpoint is:
+
+```http
+POST /api/v1/recommendations
+```
+
+Requests that require authentication must include a valid Firebase ID token in the authorization header:
+
+```http
+Authorization: Bearer <firebase_id_token>
+```
+
+If backend communication fails or the required integration is unavailable, certain workflows may rely on the frontend’s existing client-side functionality instead.
+
+The behavior depends on the current implementation and configuration. Backend and frontend responses, academic identifiers, and data structures must remain compatible to ensure consistent recommendations.
+
+## Current Development Status
+
+NaviStudo is an evolving project. Its frontend and backend are maintained separately, with some client-side functionality currently serving as a fallback for backend-dependent workflows.
+
+Ongoing development focuses on improving frontend-backend integration, resolving inconsistencies, validating the academic knowledge base, and making recommendations more reliable and relevant to Algeria’s education system.
+
+The platform is intended to support students in exploring academic options, not replace official academic guidance.
+
+## Team
+
+NaviStudo was developed collaboratively by the following team members:
+
+- **Oulfa Bouazdia — Project Lead & Backend Developer:** Led project planning and product definition, developed the backend, and worked on the AI-assisted recommendation workflow and system integration.
+- **Faouzi Ait Addi — Frontend Developer:** Developed the user interface and implemented the client-side application functionality.
+- **Anfal M’siouri — Knowledge Base Developer:** Built and organized the academic knowledge base used to support academic guidance and recommendations.
+- **Mouna Benouda — Testing & Validation:** Tested the application, checked key workflows, and helped verify its behavior.
+
+Each team member contributed to developing NaviStudo as a platform designed to make academic guidance more accessible to Algerian students.
 
 ## Tests et qualité
 
