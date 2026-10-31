@@ -132,6 +132,8 @@ http://localhost:3000
 
 When the backend is available and correctly configured, the frontend can communicate with it through HTTP API requests.
 
+The second-version backend is being developed in the [fifimamy/navistudo-backend repository](https://github.com/fifimamy/navistudo-backend), with database development currently underway.
+
 The recommendation endpoint is:
 
 ```http
@@ -141,7 +143,7 @@ POST /api/v1/recommendations
 Requests that require authentication must include a valid Firebase ID token in the authorization header:
 
 ```http
-Authorization: Bearer <firebase_id_token>
+Authorization: ******
 ```
 
 If backend communication fails or the required integration is unavailable, certain workflows may rely on the frontend’s existing client-side functionality instead.
