@@ -148,6 +148,8 @@ If backend communication fails or the required integration is unavailable, certa
 
 The behavior depends on the current implementation and configuration. Backend and frontend responses, academic identifiers, and data structures must remain compatible to ensure consistent recommendations.
 
+The backend in the second version, with work underway to develop the database:https://github.com/fifimamy/navistudo-backend
+
 ## Current Development Status
 
 NaviStudo is an evolving project. Its frontend and backend are maintained separately, with some client-side functionality currently serving as a fallback for backend-dependent workflows.
